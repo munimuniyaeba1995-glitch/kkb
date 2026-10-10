@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--APP-START-->
+<title>要領書メーカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+/* Layout: one narrow column of step cards (photo → 作業内容 → 急所), fixed action bar at the bottom, full-screen photo editor overlay. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#18212C; --muted:#5A6676; --line:#D3DAE2;
+  --accent:#D9480F; --accent-ink:#FFFFFF; --warn-bg:#FFF1E6; --sel:#1971C2; --danger:#C92A2A;
+  --stage:#1E252E;
+  --font:"BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151B; --surface:#1A2129; --ink:#E5EAF0; --muted:#97A3B0; --line:#2D3743;
+  --accent:#FF7A3D; --accent-ink:#1A0E06; --warn-bg:#2A1D13; --sel:#4DABF7; --danger:#FF6B6B; --stage:#0A0D11;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151B; --surface:#1A2129; --ink:#E5EAF0; --muted:#97A3B0; --line:#2D3743;
+  --accent:#FF7A3D; --accent-ink:#1A0E06; --warn-bg:#2A1D13; --sel:#4DABF7; --danger:#FF6B6B; --stage:#0A0D11;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,.thumb:focus-visible{outline:3px solid var(--sel);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:0 140px}
+
+.appbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:8px;padding-block:12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1.2;margin-right:auto;min-width:0}
+.brand small{font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.brand strong{font-size:19px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;min-height:42px;font-weight:700}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.4;cursor:default}
+
+h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-weight:700}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.fl{display:grid;gap:4px;font-size:12px;font-weight:700;color:var(--muted);min-width:0}
+.fl input,.fl textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:10px 12px;font-size:16px;font-weight:400;color:var(--ink);resize:vertical}
+.fl.point textarea{background:var(--warn-bg);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.fl.point{color:var(--accent)}
+
+.steps{display:grid;gap:16px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
+.step-head{display:flex;align-items:center;gap:6px}
+.step-no{background:var(--ink);color:var(--bg);font-weight:700;border-radius:8px;padding:4px 12px;margin-right:auto;font-variant-numeric:tabular-nums}
+.icon{border:1px solid var(--line);background:transparent;border-radius:8px;min-width:42px;min-height:38px;padding:0 10px;font-weight:700}
+.icon.danger{color:var(--danger)}
+.icon:disabled{opacity:.3}
+.thumb{position:relative;display:block;width:100%;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--stage);min-height:120px}
+.thumb canvas{display:block;width:100%;height:auto}
+.thumb .hint{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.66);color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px}
+.empty{border:2px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+.note{font-size:12px;color:var(--muted)}
+
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.bottombar .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.bottombar .btn{min-height:50px;padding:6px 8px;font-size:15px}
+.filebtn{position:relative;display:flex;align-items:center;justify-content:center;text-align:center}
+.filebtn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:30;background:rgba(10,14,20,.55);display:flex;align-items:flex-end;justify-content:center}
+.modal .box{background:var(--surface);color:var(--ink);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:12px;max-height:88vh;overflow:auto}
+@media (min-width:640px){.modal{align-items:center}.modal .box{border-radius:18px}}
+.modal h3{margin:0;font-size:18px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .btn{flex:1}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:10px 4px;font-weight:700;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.doclist{display:grid;gap:8px}
+.docitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center}
+.docitem .t{flex:1;min-width:0}
+.docitem .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.docitem .t span{font-size:12px;color:var(--muted)}
+.previews{display:grid;gap:12px}
+.previews img{width:100%;border:1px solid var(--line);border-radius:8px;-webkit-touch-callout:default}
+
+/* editor */
+.editor{position:fixed;inset:0;z-index:20;background:var(--stage);display:flex;flex-direction:column;color:#fff}
+.ed-top{display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#11161C}
+.ed-top .ttl{margin-right:auto;font-weight:700}
+.ed-btn{background:#232B35;border:1px solid #36414E;color:#fff;border-radius:10px;min-height:40px;padding:0 12px;font-weight:700;font-size:14px}
+.ed-btn.done{background:var(--accent);border-color:var(--accent);color:#fff}
+.ed-btn.del{color:#FF8787}
+.ed-btn:disabled{opacity:.35}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;padding:8px}
+.stage canvas{touch-action:none;display:block;box-shadow:0 2px 16px rgba(0,0,0,.5)}
+.ed-bottom{background:#11161C;padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+.tools{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.tool{background:#232B35;border:1px solid #36414E;color:#fff;border-radius:10px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:700;padding:2px}
+.tool svg{width:22px;height:22px}
+.tool[aria-pressed="true"]{background:#fff;color:#11161C}
+.props{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid #36414E;padding:0}
+.sw[aria-pressed="true"]{outline:3px solid #fff;outline-offset:2px}
+.size{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;font-weight:700}
+.size input{width:110px;accent-color:var(--accent)}
+.ed-help{font-size:12px;color:#AEB8C4;text-align:center;min-height:1.4em}
+
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="appbar">
+    <div class="brand"><small>作業要領書</small><strong>要領書メーカー</strong></div>
+    <button class="btn ghost" id="btnDocs" type="button">一覧</button>
+    <button class="btn" id="btnNew" type="button">新規</button>
+  </header>
+
+  <h2>表紙の情報</h2>
+  <section class="sheet" aria-label="表紙の情報">
+    <label class="fl">タイトル<input id="f-title" data-field="title" placeholder="例:ポンプ定期点検 作業要領書"></label>
+    <label class="fl">作業名・対象設備<input id="f-workName" data-field="workName" placeholder="例:冷却水ポンプ P-102"></label>
+    <div class="grid2">
+      <label class="fl">管理番号<input id="f-docNo" data-field="docNo" placeholder="例:WI-2026-014"></label>
+      <label class="fl">作成日<input id="f-date" data-field="date" type="date"></label>
+    </div>
+    <label class="fl">作成者<input id="f-author" data-field="author" placeholder="例:製造課 山田"></label>
+    <label class="fl point">安全・注意事項<textarea id="f-notes" data-field="notes" rows="2" placeholder="例:作業前に必ず電源を遮断し、保護手袋を着用すること"></textarea></label>
+  </section>
+
+  <h2>手順</h2>
+  <div class="steps" id="steps"></div>
+  <div class="empty" id="emptySteps" hidden>
+    <strong>まだ手順がありません</strong>
+    下の「撮影」か「写真を選ぶ」で写真を追加すると、1枚ごとに手順が1つ増えます。
+  </div>
+  <p class="note" id="storageNote">入力内容はこの端末のブラウザに自動保存されます。大事な要領書はPDFでも保存しておいてください。</p>
+</div>
+
+<nav class="bottombar" aria-label="操作">
+  <div class="in">
+    <label class="btn filebtn">撮影<input type="file" id="inCamera" accept="image/*" capture="environment" aria-label="カメラで撮影"></label>
+    <label class="btn filebtn">写真を選ぶ<input type="file" id="inPick" accept="image/*" multiple aria-label="写真を選ぶ"></label>
+    <button class="btn primary" id="btnExport" type="button">保存・出力</button>
+  </div>
+</nav>
+
+<!-- editor -->
+<div class="editor" id="editor" hidden>
+  <div class="ed-top">
+    <span class="ttl" id="edTitle">手順 1</span>
+    <button class="ed-btn" id="edUndo" type="button">元に戻す</button>
+    <button class="ed-btn" id="edEdit" type="button" hidden>文字を直す</button>
+    <button class="ed-btn del" id="edDel" type="button" hidden>消す</button>
+    <button class="ed-btn done" id="edDone" type="button">完了</button>
+  </div>
+  <div class="stage" id="stage"><canvas id="edCanvas"></canvas></div>
+  <div class="ed-bottom">
+    <div class="ed-help" id="edHelp"></div>
+    <div class="tools" id="tools">
+      <button class="tool" data-tool="move" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>移動</button>
+      <button class="tool" data-tool="text" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M8 9h8M12 9v7"/></svg>文字</button>
+      <button class="tool" data-tool="arrow" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L19 5M10 5h9v9"/></svg>矢印</button>
+      <button class="tool" data-tool="rect" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>四角</button>
+      <button class="tool" data-tool="ellipse" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>丸</button>
+      <button class="tool" data-tool="num" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--stage)" font-family="sans-serif">1</text></svg>番号</button>
+    </div>
+    <div class="props">
+      <div class="row" id="swatches" style="gap:8px"></div>
+      <label class="size">大きさ<input type="range" id="edSize" min="0.5" max="2.5" step="0.1" value="1"></label>
+    </div>
+  </div>
+</div>
+
+<!-- generic modal -->
+<div class="modal" id="modal" hidden><div class="box" id="modalBox" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const COLORS = {red:'#E03131',yellow:'#FCC419',blue:'#1971C2',green:'#2F9E44',white:'#FFFFFF',black:'#212529'};
+const DARK_TEXT = new Set(['yellow','white']);
+const FONT = '"BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+const font = (px, w=700) => `${w} ${px}px ${FONT}`;
+const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36);
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const mctx = document.createElement('canvas').getContext('2d');
+
+/* ---------- storage ---------- */
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch {} };
+const DB = {
+  db:null,
+  open(){
+    if (this.db) return this.db;
+    this.db = new Promise((res,rej) => {
+      const r = indexedDB.open('yoryosho', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('docs', {keyPath:'id'});
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return this.db;
+  },
+  async run(mode, fn){
+    const db = await this.open();
+    return new Promise((res,rej) => {
+      const t = db.transaction('docs', mode); const r = fn(t.objectStore('docs'));
+      t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  },
+  put(d){ return this.run('readwrite', s => s.put(d)); },
+  get(id){ return this.run('readonly', s => s.get(id)); },
+  all(){ return this.run('readonly', s => s.getAll()); },
+  del(id){ return this.run('readwrite', s => s.delete(id)); },
+};
+let storageOk = true;
+
+const newDoc = () => ({id:uid(), title:'', workName:'', docNo:'', date:today(), author:'', notes:'', steps:[], layout:2, updated:Date.now()});
+let doc = newDoc();
+let saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 400);
+}
+async function saveNow(){
+  clearTimeout(saveTimer);
+  doc.updated = Date.now();
+  if (!storageOk) return;
+  try { await DB.put(doc); lsSet('yoryosho.current', doc.id); }
+  catch (e) { storageOk = false; $('#storageNote').textContent = 'この端末では自動保存が使えません。閉じる前にPDFか画像で保存してください。'; }
+}
+
+/* ---------- ui helpers ---------- */
+let toastTimer;
+function toast(msg, ms=2200){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); if (ms) toastTimer = setTimeout(() => t.hidden = true, ms);
+}
+const modal = $('#modal'), modalBox = $('#modalBox');
+let modalClose = null;
+function openModal(html, onClose){
+  modalBox.innerHTML = html; modal.hidden = false; modalClose = onClose || null;
+  const f = modalBox.querySelector('[autofocus]'); if (f) setTimeout(() => f.focus(), 50);
+}
+function closeModal(){ modal.hidden = true; modalBox.innerHTML = ''; const c = modalClose; modalClose = null; c && c(); }
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+function confirmBox(msg, ok='OK', danger=false){
+  return new Promise(res => {
+    let done = false;
+    openModal(`<h3>${esc(msg)}</h3><div class="row"><button class="btn" data-r="0" type="button">やめる</button><button class="btn ${danger?'danger':'primary'}" data-r="1" type="button">${esc(ok)}</button></div>`, () => { if(!done) res(false); });
+    modalBox.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { done = true; res(b.dataset.r === '1'); closeModal(); });
+  });
+}
+function textBox(initial){
+  return new Promise(res => {
+    let done = false;
+    const phrases = ['注意','確認','ここを押す','締め付け','OK','NG','外す','取り付け'];
+    openModal(`<h3>写真に入れる文字</h3>
+      <textarea id="tbText" rows="3" autofocus style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:18px;background:var(--bg)" placeholder="例:このボルトを締める">${esc(initial)}</textarea>
+      <div class="chips">${phrases.map(p=>`<button class="chip" type="button" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+      <p class="note" style="margin:0">改行すると2行で表示されます。</p>
+      <div class="row"><button class="btn" data-r="0" type="button">やめる</button><button class="btn primary" data-r="1" type="button">決定</button></div>`, () => { if(!done) res(null); });
+    const ta = $('#tbText');
+    modalBox.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { ta.value = ta.value ? ta.value + b.dataset.p : b.dataset.p; ta.focus(); });
+    modalBox.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { done = true; res(b.dataset.r === '1' ? ta.value.trim() : null); closeModal(); });
+  });
+}
+
+/* ---------- images ---------- */
+const imgCache = new Map();
+function loadImg(src){
+  if (!imgCache.has(src)) imgCache.set(src, new Promise((res,rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }));
+  return imgCache.get(src);
+}
+async function fileToDataURL(file, max=1800){
+  const url = URL.createObjectURL(file);
+  try {
+    const im = await new Promise((res,rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.86);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ---------- annotation drawing ---------- */
+function rr(ctx,x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function textM(a,W,H){
+  const S = Math.min(W,H), fs = 0.055*S*(a.size||1), pad = fs*0.4;
+  mctx.font = font(fs);
+  const lines = String(a.text||'').split('\n');
+  const tw = Math.max(fs, ...lines.map(l => mctx.measureText(l).width));
+  return {x:a.x*W, y:a.y*H, w:tw+pad*2, h:lines.length*fs*1.3 - fs*0.3 + pad*2, fs, pad, lines};
+}
+const strokeW = (a,S) => 0.012*S*(a.size||1);
+const numR = (a,S) => 0.045*S*(a.size||1);
+function drawAnn(ctx,a,W,H){
+  const S = Math.min(W,H), col = COLORS[a.color] || COLORS.red;
+  const outline = a.color === 'white' ? 'rgba(0,0,0,.8)' : '#FFFFFF';
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (a.type === 'text') {
+    const m = textM(a,W,H);
+    rr(ctx,m.x,m.y,m.w,m.h,m.fs*0.25); ctx.fillStyle = col; ctx.fill();
+    ctx.lineWidth = Math.max(2, m.fs*0.1); ctx.strokeStyle = outline; ctx.stroke();
+    ctx.fillStyle = DARK_TEXT.has(a.color) ? '#111' : '#fff'; ctx.font = font(m.fs); ctx.textBaseline = 'middle';
+    m.lines.forEach((l,i) => ctx.fillText(l, m.x+m.pad, m.y+m.pad+i*m.fs*1.3+m.fs/2));
+  } else if (a.type === 'num') {
+    const r = numR(a,S), x = a.x*W, y = a.y*H;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+    ctx.lineWidth = Math.max(2, r*0.16); ctx.strokeStyle = outline; ctx.stroke();
+    ctx.fillStyle = DARK_TEXT.has(a.color) ? '#111' : '#fff'; ctx.font = font(r*(a.n>9?1.0:1.25));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(a.n), x, y + r*0.05);
+  } else {
+    const lw = strokeW(a,S), ow = Math.max(1.5, lw*0.35);
+    const x1=a.x1*W, y1=a.y1*H, x2=a.x2*W, y2=a.y2*H;
+    if (a.type === 'arrow') {
+      const ang = Math.atan2(y2-y1, x2-x1), hl = lw*4.2, hw = lw*2.8, c = Math.cos(ang), s = Math.sin(ang);
+      const shaft = () => { ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-c*hl*0.7, y2-s*hl*0.7); };
+      const head = () => { ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2-c*hl+s*hw, y2-s*hl-c*hw); ctx.lineTo(x2-c*hl-s*hw, y2-s*hl+c*hw); ctx.closePath(); };
+      ctx.strokeStyle = outline; ctx.lineWidth = lw+ow*2; shaft(); ctx.stroke(); head(); ctx.lineWidth = ow*2; ctx.stroke();
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; shaft(); ctx.stroke(); head(); ctx.fill();
+    } else {
+      const path = () => {
+        if (a.type === 'rect') rr(ctx, Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1), lw*1.5);
+        else { ctx.beginPath(); ctx.ellipse((x1+x2)/2, (y1+y2)/2, Math.max(1,Math.abs(x2-x1)/2), Math.max(1,Math.abs(y2-y1)/2), 0, 0, Math.PI*2); }
+      };
+      ctx.strokeStyle = outline; ctx.lineWidth = lw+ow*2; path(); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = lw; path(); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function drawAnns(ctx, anns, W, H){ for (const a of anns) drawAnn(ctx,a,W,H); }
+function bounds(a,W,H){
+  const S = Math.min(W,H);
+  if (a.type === 'text') { const m = textM(a,W,H); return {x:m.x,y:m.y,w:m.w,h:m.h}; }
+  if (a.type === 'num') { const r = numR(a,S); return {x:a.x*W-r,y:a.y*H-r,w:r*2,h:r*2}; }
+  const p = strokeW(a,S)*3;
+  const x = Math.min(a.x1,a.x2)*W - p, y = Math.min(a.y1,a.y2)*H - p;
+  return {x, y, w:Math.abs(a.x2-a.x1)*W + p*2, h:Math.abs(a.y2-a.y1)*H + p*2};
+}
+function segDist(px,py,x1,y1,x2,y2){
+  const dx=x2-x1, dy=y2-y1, l=dx*dx+dy*dy; let t = l ? ((px-x1)*dx+(py-y1)*dy)/l : 0; t = clamp(t,0,1);
+  return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
+}
+function hit(a,px,py,W,H){
+  const S = Math.min(W,H), t = 16;
+  if (a.type === 'text') { const m = textM(a,W,H); return px>=m.x-8 && px<=m.x+m.w+8 && py>=m.y-8 && py<=m.y+m.h+8; }
+  if (a.type === 'num') return Math.hypot(px-a.x*W, py-a.y*H) <= numR(a,S)+10;
+  if (a.type === 'arrow') return segDist(px,py,a.x1*W,a.y1*H,a.x2*W,a.y2*H) <= strokeW(a,S)*2+12;
+  const x0=Math.min(a.x1,a.x2)*W, x1=Math.max(a.x1,a.x2)*W, y0=Math.min(a.y1,a.y2)*H, y1=Math.max(a.y1,a.y2)*H;
+  if (a.type === 'rect') {
+    if (px<x0-t || px>x1+t || py<y0-t || py>y1+t) return false;
+    return Math.abs(px-x0)<t || Math.abs(px-x1)<t || Math.abs(py-y0)<t || Math.abs(py-y1)<t;
+  }
+  const rx=(x1-x0)/2, ry=(y1-y0)/2; if (rx<2 || ry<2) return false;
+  const d = Math.hypot((px-(x0+rx))/rx, (py-(y0+ry))/ry);
+  return Math.abs(d-1)*Math.min(rx,ry) < t;
+}
+const hasHandles = a => a && (a.type==='arrow' || a.type==='rect' || a.type==='ellipse');
+
+async function stepCanvas(st, maxW){
+  const im = await loadImg(st.src);
+  const k = Math.min(1, maxW/im.naturalWidth);
+  const c = document.createElement('canvas');
+  c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+  const ctx = c.getContext('2d'); ctx.drawImage(im, 0, 0, c.width, c.height);
+  drawAnns(ctx, st.anns, c.width, c.height);
+  return c;
+}
+
+/* ---------- main form ---------- */
+const fields = ['title','workName','docNo','date','author','notes'];
+function fillForm(){ for (const f of fields) $('#f-'+f).value = doc[f] || ''; }
+for (const f of fields) $('#f-'+f).addEventListener('input', e => { doc[f] = e.target.value; scheduleSave(); });
+
+const stepsEl = $('#steps');
+function renderSteps(){
+  stepsEl.innerHTML = '';
+  $('#emptySteps').hidden = doc.steps.length > 0;
+  doc.steps.forEach((st,i) => {
+    const card = document.createElement('article');
+    card.className = 'step'; card.dataset.i = i;
+    card.innerHTML = `<div class="step-head"><span class="step-no">手順 ${i+1}</span>
+        <button class="icon" type="button" data-act="up" aria-label="手順${i+1}を上へ" ${i===0?'disabled':''}>↑</button>
+        <button class="icon" type="button" data-act="down" aria-label="手順${i+1}を下へ" ${i===doc.steps.length-1?'disabled':''}>↓</button>
+        <button class="icon danger" type="button" data-act="del">削除</button></div>
+      <button class="thumb" type="button" data-act="edit" aria-label="手順${i+1}の写真に書き込む"><span class="hint">タップして書き込み</span></button>
+      <label class="fl">作業内容<textarea id="st-text-${st.id}" data-k="text" rows="3" placeholder="例:カバーのボルト4本を外す"></textarea></label>
+      <label class="fl point">急所・注意<textarea id="st-point-${st.id}" data-k="point" rows="2" placeholder="例:ボルトは対角の順に緩める"></textarea></label>`;
+    card.querySelector('[data-k="text"]').value = st.text || '';
+    card.querySelector('[data-k="point"]').value = st.point || '';
+    stepsEl.appendChild(card);
+    const thumb = card.querySelector('.thumb');
+    stepCanvas(st, 1000).then(c => thumb.prepend(c)).catch(() => {});
+  });
+}
+stepsEl.addEventListener('input', e => {
+  const k = e.target.dataset.k; if (!k) return;
+  const i = +e.target.closest('.step').dataset.i; doc.steps[i][k] = e.target.value; scheduleSave();
+});
+stepsEl.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const i = +b.closest('.step').dataset.i, act = b.dataset.act, s = doc.steps;
+  if (act === 'edit') return openEditor(i);
+  if (act === 'up' && i > 0) [s[i-1], s[i]] = [s[i], s[i-1]];
+  else if (act === 'down' && i < s.length-1) [s[i+1], s[i]] = [s[i], s[i+1]];
+  else if (act === 'del') { if (!await confirmBox(`手順 ${i+1} を削除しますか?`, '削除する', true)) return; s.splice(i,1); }
+  else return;
+  renderSteps(); scheduleSave();
+});
+
+async function addFiles(files){
+  if (!files || !files.length) return;
+  toast('写真を読み込み中…', 0);
+  let added = 0;
+  for (const f of files) {
+    try { const src = await fileToDataURL(f); doc.steps.push({id:uid(), src, anns:[], text:'', point:''}); added++; }
+    catch {}
+  }
+  renderSteps(); saveNow();
+  toast(added ? `${added}枚追加しました。写真をタップすると文字や矢印を入れられます` : '写真を読み込めませんでした', 3200);
+  if (added) setTimeout(() => stepsEl.lastElementChild?.scrollIntoView({behavior:'smooth', block:'center'}), 100);
+}
+$('#inCamera').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+$('#inPick').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+
+/* ---------- editor ---------- */
+const ed = {i:0, step:null, tool:'text', color:'red', size:1, sel:null, drag:null, undo:[], W:0, H:0, dpr:1, img:null, before:null};
+const cv = $('#edCanvas'), cx = cv.getContext('2d');
+const HELP = {move:'書き込んだものをドラッグで動かせます', text:'文字を入れたい場所をタップ', arrow:'矢印の根元から先へドラッグ', rect:'囲みたい範囲を斜めにドラッグ', ellipse:'囲みたい範囲を斜めにドラッグ', num:'タップするたびに 1, 2, 3… と番号が増えます'};
+$('#swatches').innerHTML = Object.entries(COLORS).map(([k,v]) => `<button class="sw" type="button" data-c="${k}" style="background:${v}" aria-label="${({red:'赤',yellow:'黄',blue:'青',green:'緑',white:'白',black:'黒'})[k]}"></button>`).join('');
+
+async function openEditor(i){
+  ed.i = i; ed.step = doc.steps[i]; ed.sel = null; ed.drag = null; ed.undo = [];
+  ed.img = await loadImg(ed.step.src);
+  $('#edTitle').textContent = `手順 ${i+1}`;
+  $('#editor').hidden = false; document.body.style.overflow = 'hidden';
+  syncUI(); layout();
+}
+function closeEditor(){
+  $('#editor').hidden = true; document.body.style.overflow = '';
+  saveNow(); renderSteps();
+}
+function layout(){
+  if ($('#editor').hidden || !ed.img) return;
+  const st = $('#stage').getBoundingClientRect();
+  const aw = st.width - 16, ah = st.height - 16;
+  const k = Math.min(aw/ed.img.naturalWidth, ah/ed.img.naturalHeight);
+  ed.W = Math.max(50, Math.floor(ed.img.naturalWidth*k)); ed.H = Math.max(50, Math.floor(ed.img.naturalHeight*k));
+  ed.dpr = Math.min(3, window.devicePixelRatio || 1);
+  cv.style.width = ed.W+'px'; cv.style.height = ed.H+'px';
+  cv.width = Math.round(ed.W*ed.dpr); cv.height = Math.round(ed.H*ed.dpr);
+  draw();
+}
+window.addEventListener('resize', layout);
+function draw(){
+  cx.setTransform(ed.dpr,0,0,ed.dpr,0,0);
+  cx.drawImage(ed.img, 0, 0, ed.W, ed.H);
+  drawAnns(cx, ed.step.anns, ed.W, ed.H);
+  const a = ed.sel;
+  if (a) {
+    const b = bounds(a, ed.W, ed.H);
+    cx.save(); cx.setLineDash([6,4]); cx.lineWidth = 2; cx.strokeStyle = '#4DABF7';
+    cx.strokeRect(b.x-4, b.y-4, b.w+8, b.h+8); cx.restore();
+    if (hasHandles(a)) for (const [hx,hy] of [[a.x1,a.y1],[a.x2,a.y2]]) {
+      cx.beginPath(); cx.arc(hx*ed.W, hy*ed.H, 11, 0, Math.PI*2);
+      cx.fillStyle = '#fff'; cx.fill(); cx.lineWidth = 3; cx.strokeStyle = '#1971C2'; cx.stroke();
+    }
+  }
+}
+function syncUI(){
+  document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === ed.tool));
+  const color = ed.sel ? ed.sel.color : ed.color, size = ed.sel ? (ed.sel.size||1) : ed.size;
+  document.querySelectorAll('.sw').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === color));
+  $('#edSize').value = size;
+  $('#edDel').hidden = !ed.sel; $('#edEdit').hidden = !(ed.sel && ed.sel.type === 'text');
+  $('#edUndo').disabled = !ed.undo.length;
+  $('#edHelp').textContent = ed.sel ? '選択中:ドラッグで移動、色・大きさも変えられます' : HELP[ed.tool];
+}
+function pushUndo(snap){ ed.undo.push(snap); if (ed.undo.length > 50) ed.undo.shift(); }
+function changed(){ scheduleSave(); syncUI(); draw(); }
+function pt(e){ const r = cv.getBoundingClientRect(); return {x:clamp(e.clientX-r.left,0,ed.W), y:clamp(e.clientY-r.top,0,ed.H)}; }
+
+cv.addEventListener('pointerdown', async e => {
+  e.preventDefault();
+  const p = pt(e), anns = ed.step.anns, W = ed.W, H = ed.H;
+  ed.before = JSON.stringify(anns);
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+  if (hasHandles(ed.sel)) {
+    for (const h of [1,2]) if (Math.hypot(p.x-ed.sel['x'+h]*W, p.y-ed.sel['y'+h]*H) < 24) { ed.drag = {mode:'handle', h}; return; }
+  }
+  for (let i = anns.length-1; i >= 0; i--) {
+    if (hit(anns[i], p.x, p.y, W, H)) { ed.sel = anns[i]; ed.drag = {mode:'move', last:p}; syncUI(); draw(); return; }
+  }
+  ed.sel = null; ed.drag = null;
+  const nx = p.x/W, ny = p.y/H, base = {id:uid(), color:ed.color, size:ed.size};
+  if (ed.tool === 'text') {
+    syncUI(); draw();
+    const before = ed.before, txt = await textBox('');
+    if (!txt) return;
+    const a = {...base, type:'text', text:txt, x:0, y:0};
+    const m = textM(a, W, H);
+    a.x = clamp((p.x - m.w/2)/W, 0, Math.max(0, 1 - m.w/W)); a.y = clamp((p.y - m.h/2)/H, 0, Math.max(0, 1 - m.h/H));
+    pushUndo(before); anns.push(a); ed.sel = a; changed(); return;
+  }
+  if (ed.tool === 'num') {
+    const n = anns.filter(a => a.type === 'num').reduce((mx,a) => Math.max(mx, a.n), 0) + 1;
+    const a = {...base, type:'num', n, x:nx, y:ny}; anns.push(a); ed.sel = a; ed.drag = {mode:'move', last:p};
+  } else if (ed.tool === 'arrow' || ed.tool === 'rect' || ed.tool === 'ellipse') {
+    const a = {...base, type:ed.tool, x1:nx, y1:ny, x2:nx, y2:ny}; anns.push(a); ed.sel = a; ed.drag = {mode:'handle', h:2, created:true};
+  }
+  syncUI(); draw();
+});
+cv.addEventListener('pointermove', e => {
+  if (!ed.drag || !ed.sel) return;
+  e.preventDefault();
+  const p = pt(e), a = ed.sel, W = ed.W, H = ed.H;
+  if (ed.drag.mode === 'move') {
+    const dx = (p.x - ed.drag.last.x)/W, dy = (p.y - ed.drag.last.y)/H; ed.drag.last = p;
+    if ('x1' in a) { a.x1 += dx; a.x2 += dx; a.y1 += dy; a.y2 += dy; } else { a.x += dx; a.y += dy; }
+  } else { a['x'+ed.drag.h] = p.x/W; a['y'+ed.drag.h] = p.y/H; }
+  draw();
+});
+function endDrag(){
+  if (!ed.drag) return;
+  const a = ed.sel;
+  if (ed.drag.created && a && Math.hypot((a.x2-a.x1)*ed.W, (a.y2-a.y1)*ed.H) < 14) {
+    ed.step.anns.splice(ed.step.anns.indexOf(a), 1); ed.sel = null;
+    toast(ed.tool === 'arrow' ? '矢印は根元から先へドラッグして描きます' : '囲みたい範囲をドラッグして描きます');
+  }
+  ed.drag = null;
+  if (JSON.stringify(ed.step.anns) !== ed.before) { pushUndo(ed.before); scheduleSave(); }
+  syncUI(); draw();
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+$('#tools').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (!b) return; ed.tool = b.dataset.tool; ed.sel = null; syncUI(); draw(); });
+$('#swatches').addEventListener('click', e => {
+  const b = e.target.closest('[data-c]'); if (!b) return;
+  ed.color = b.dataset.c;
+  if (ed.sel && ed.sel.color !== ed.color) { pushUndo(JSON.stringify(ed.step.anns)); ed.sel.color = ed.color; }
+  changed();
+});
+let sizeSnap = null;
+$('#edSize').addEventListener('pointerdown', () => { sizeSnap = JSON.stringify(ed.step.anns); });
+$('#edSize').addEventListener('input', e => {
+  ed.size = +e.target.value;
+  if (ed.sel) { if (sizeSnap === null) sizeSnap = JSON.stringify(ed.step.anns); ed.sel.size = ed.size; draw(); }
+});
+$('#edSize').addEventListener('change', () => { if (ed.sel && sizeSnap !== null && sizeSnap !== JSON.stringify(ed.step.anns)) pushUndo(sizeSnap); sizeSnap = null; changed(); });
+$('#edUndo').onclick = () => { if (!ed.undo.length) return; ed.step.anns = JSON.parse(ed.undo.pop()); ed.sel = null; changed(); };
+$('#edDel').onclick = () => { if (!ed.sel) return; pushUndo(JSON.stringify(ed.step.anns)); ed.step.anns.splice(ed.step.anns.indexOf(ed.sel), 1); ed.sel = null; changed(); };
+$('#edEdit').onclick = async () => {
+  const a = ed.sel; if (!a || a.type !== 'text') return;
+  const snap = JSON.stringify(ed.step.anns), txt = await textBox(a.text);
+  if (txt === null || txt === a.text) return;
+  pushUndo(snap);
+  if (!txt) { ed.step.anns.splice(ed.step.anns.indexOf(a), 1); ed.sel = null; } else a.text = txt;
+  changed();
+};
+$('#edDone').onclick = closeEditor;
+
+/* ---------- page rendering (A4, 150dpi) ---------- */
+const PW = 1240, PH = 1754, M = 72;
+function wrap(ctx, text, maxW){
+  const out = [];
+  const noStart = '、。,.)」』】〕!?ー々ぁぃぅぇぉっゃゅょァィゥェォッャュョ';
+  for (const para of String(text||'').split('\n')) {
+    let line = '';
+    for (const ch of para) {
+      if (ctx.measureText(line + ch).width > maxW && line && !noStart.includes(ch)) { out.push(line); line = ch; }
+      else line += ch;
+    }
+    out.push(line);
+  }
+  return out;
+}
+function fitText(ctx, text, maxW, maxH, start, min){
+  let fs = start;
+  for (; fs > min; fs -= 2) { ctx.font = font(fs, 400); if (wrap(ctx,text,maxW).length*fs*1.5 <= maxH) break; }
+  ctx.font = font(fs, 400);
+  return {fs, lines: wrap(ctx,text,maxW)};
+}
+function drawLines(ctx, lines, x, y, fs, maxY){
+  ctx.textBaseline = 'top';
+  for (const l of lines) { if (y + fs > maxY) break; ctx.fillText(l, x, y); y += fs*1.5; }
+  return y;
+}
+function drawCover(ctx){
+  const cw = PW - M*2, metaW = 420, rowH = 46;
+  let y = M;
+  ctx.fillStyle = '#D9480F'; ctx.font = font(24); ctx.textBaseline = 'top'; ctx.fillText('作業要領書', M, y);
+  ctx.fillStyle = '#18212C'; ctx.font = font(48);
+  const tl = wrap(ctx, doc.title || '(タイトル未入力)', cw - metaW - 32).slice(0,3);
+  tl.forEach((l,i) => ctx.fillText(l, M, y + 40 + i*60));
+  const meta = [['管理番号', doc.docNo], ['作成日', (doc.date||'').replace(/-/g,'/')], ['作成者', doc.author]];
+  const mx = PW - M - metaW;
+  meta.forEach(([k,v],i) => {
+    const ry = y + i*rowH;
+    ctx.fillStyle = '#EEF1F4'; ctx.fillRect(mx, ry, 130, rowH);
+    ctx.strokeStyle = '#18212C'; ctx.lineWidth = 2; ctx.strokeRect(mx, ry, metaW, rowH);
+    ctx.beginPath(); ctx.moveTo(mx+130, ry); ctx.lineTo(mx+130, ry+rowH); ctx.stroke();
+    ctx.fillStyle = '#18212C'; ctx.font = font(20); ctx.textBaseline = 'middle'; ctx.fillText(k, mx+14, ry+rowH/2);
+    ctx.font = font(22, 400); ctx.fillText(wrap(ctx, v||'', metaW-160)[0] || '', mx+146, ry+rowH/2);
+  });
+  y = Math.max(y + 40 + tl.length*60, y + rowH*3) + 16;
+  ctx.fillStyle = '#18212C'; ctx.fillRect(M, y, cw, 5); y += 22;
+  ctx.textBaseline = 'top';
+  if (doc.workName) {
+    ctx.font = font(22); ctx.fillStyle = '#5A6676'; ctx.fillText('作業名', M, y+4);
+    ctx.font = font(28); ctx.fillStyle = '#18212C';
+    const wl = wrap(ctx, doc.workName, cw-110).slice(0,2); wl.forEach((l,i) => ctx.fillText(l, M+110, y + i*40)); y += wl.length*40 + 14;
+  }
+  if (doc.notes) {
+    ctx.font = font(24, 400);
+    const nl = wrap(ctx, doc.notes, cw-48).slice(0,4);
+    const bh = 58 + nl.length*36;
+    ctx.fillStyle = '#FFF1E6'; ctx.fillRect(M, y, cw, bh);
+    ctx.strokeStyle = '#D9480F'; ctx.lineWidth = 3; ctx.strokeRect(M, y, cw, bh);
+    ctx.fillStyle = '#D9480F'; ctx.font = font(22); ctx.fillText('安全・注意事項', M+24, y+16);
+    ctx.fillStyle = '#18212C'; ctx.font = font(24, 400); nl.forEach((l,i) => ctx.fillText(l, M+24, y+50+i*36));
+    y += bh + 20;
+  }
+  return y + 6;
+}
+function drawRunningHead(ctx){
+  ctx.textBaseline = 'top'; ctx.fillStyle = '#18212C'; ctx.font = font(24);
+  ctx.fillText(wrap(ctx, doc.title || '作業要領書', PW-M*2-320)[0], M, M);
+  ctx.font = font(20, 400); ctx.fillStyle = '#5A6676'; ctx.textAlign = 'right';
+  ctx.fillText(doc.docNo || '', PW-M, M+4); ctx.textAlign = 'left';
+  ctx.fillStyle = '#18212C'; ctx.fillRect(M, M+42, PW-M*2, 3);
+  return M + 66;
+}
+async function drawStep(ctx, st, n, x, y, w, h, per){
+  ctx.fillStyle = '#18212C'; rr(ctx, x, y, 132, 44, 8); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = font(24); ctx.textBaseline = 'middle'; ctx.fillText(`手順 ${n}`, x+18, y+23);
+  const by = y + 58, bh = h - 58;
+  const c = await stepCanvas(st, 1600);
+  let iw, ih, ix, tx, ty, tw, th;
+  if (per === 1) {
+    const maxH = bh*0.7, k = Math.min(w/c.width, maxH/c.height);
+    iw = c.width*k; ih = c.height*k; ix = x + (w-iw)/2;
+    tx = x; ty = by + ih + 24; tw = w; th = bh - ih - 24;
+  } else {
+    const aw = w*0.56, k = Math.min(aw/c.width, bh/c.height);
+    iw = c.width*k; ih = c.height*k; ix = x;
+    tx = x + aw + 28; ty = by; tw = w - aw - 28; th = bh;
+  }
+  ctx.drawImage(c, ix, by, iw, ih);
+  ctx.strokeStyle = '#C3CBD4'; ctx.lineWidth = 2; ctx.strokeRect(ix, by, iw, ih);
+  const text = st.text || '', point = st.point || '';
+  const pointH = point ? Math.min(th*0.45, 60 + Math.ceil(point.length/ Math.max(8, tw/28)) * 40) : 0;
+  ctx.fillStyle = '#18212C';
+  const t = fitText(ctx, text, tw, th - (point ? pointH + 16 : 0), 32, 18);
+  const endY = drawLines(ctx, t.lines, tx, ty, t.fs, ty + th - (point ? pointH + 16 : 0));
+  if (point) {
+    const py = Math.max(endY + 12, ty);
+    const ph = Math.min(pointH, ty + th - py);
+    if (ph > 50) {
+      ctx.fillStyle = '#FFF1E6'; ctx.fillRect(tx, py, tw, ph);
+      ctx.fillStyle = '#D9480F'; ctx.fillRect(tx, py, 6, ph);
+      ctx.font = font(20); ctx.textBaseline = 'top'; ctx.fillText('急所・注意', tx+18, py+10);
+      ctx.fillStyle = '#18212C';
+      const pt2 = fitText(ctx, point, tw-32, ph-46, 26, 16);
+      drawLines(ctx, pt2.lines, tx+18, py+40, pt2.fs, py+ph-4);
+    }
+  }
+}
+async function fontsReady(){
+  try { await Promise.all([document.fonts.load(font(30)), document.fonts.load(font(30,400))]); } catch {}
+}
+async function renderPages(){
+  await fontsReady();
+  const per = doc.layout || 2, total = Math.max(1, Math.ceil(doc.steps.length/per)), pages = [];
+  for (let p = 0; p < total; p++) {
+    const c = document.createElement('canvas'); c.width = PW; c.height = PH;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,PW,PH);
+    const top = p === 0 ? drawCover(ctx) : drawRunningHead(ctx);
+    const bottom = PH - M - 30, slotH = (bottom - top)/per;
+    const slice = doc.steps.slice(p*per, (p+1)*per);
+    for (let i = 0; i < slice.length; i++) {
+      await drawStep(ctx, slice[i], p*per+i+1, M, top + i*slotH, PW - M*2, slotH - 28, per);
+      if (i < per-1 && i < slice.length-1) { ctx.fillStyle = '#D3DAE2'; ctx.fillRect(M, top + (i+1)*slotH - 14, PW-M*2, 2); }
+    }
+    if (!doc.steps.length) { ctx.fillStyle = '#5A6676'; ctx.font = font(26,400); ctx.textBaseline = 'top'; ctx.fillText('手順がまだありません', M, top + 20); }
+    ctx.fillStyle = '#5A6676'; ctx.font = font(20, 400); ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'center'; ctx.fillText(`${p+1} / ${total}`, PW/2, PH - M + 20);
+    ctx.textAlign = 'left';
+    pages.push(c);
+  }
+  return pages;
+}
+
+/* ---------- saving ---------- */
+let dlPromise = null;
+const downloadsCap = () => dlPromise || (dlPromise = (window.claude && typeof window.claude.use === 'function') ? Promise.resolve(window.claude.use('downloads')).catch(() => null) : Promise.resolve(null));
+const inArtifact = () => !!(window.claude && typeof window.claude.use === 'function');
+const baseName = () => (doc.title || '要領書').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 60) + '_' + (doc.date || today()).replace(/-/g,'');
+const toBlob = (c, type='image/jpeg', q=0.92) => new Promise(res => c.toBlob(res, type, q));
+
+async function saveFiles(files){
+  const dl = await downloadsCap();
+  if (dl) {
+    let n = 0;
+    for (const f of files) {
+      try { await dl.save({filename:f.name, data:f.blob}); n++; }
+      catch (e) {
+        const code = e && e.code;
+        if (code === 'declined') { toast(n ? `${n}件保存しました(残りはキャンセル)` : '保存をキャンセルしました'); return; }
+        if (code === 'rate_limited') { await new Promise(r => setTimeout(r, 1500)); try { await dl.save({filename:f.name, data:f.blob}); n++; continue; } catch {} }
+        return showPreview(files, '保存できませんでした。画像は長押しで保存できます。');
+      }
+    }
+    toast(`${n}件保存しました`); return;
+  }
+  const objs = files.map(f => new File([f.blob], f.name, {type:f.blob.type}));
+  const coarse = matchMedia('(pointer:coarse)').matches;
+  if (coarse && navigator.canShare && navigator.canShare({files:objs})) {
+    try { await navigator.share({files:objs, title:doc.title || '要領書'}); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  if (inArtifact()) return showPreview(files, 'この画面では直接保存できません。画像を長押しして保存してください。');
+  for (const f of files) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  toast('保存しました');
+}
+function showPreview(files, msg){
+  const imgs = files.filter(f => f.blob.type.startsWith('image/'));
+  openModal(`<h3>保存</h3><p class="note" style="margin:0">${esc(msg)}</p>
+    <div class="previews">${imgs.map(f => `<img alt="${esc(f.name)}" src="${URL.createObjectURL(f.blob)}">`).join('') || '<p>PDFはこの画面では保存できません。「ページを画像で」をお使いください。</p>'}</div>
+    <button class="btn" type="button" id="pvClose">閉じる</button>`);
+  $('#pvClose').onclick = closeModal;
+}
+
+async function runExport(kind){
+  closeModal();
+  if (!doc.steps.length && kind !== 'pdf') return toast('先に写真を追加してください');
+  toast('作成中…', 0);
+  try {
+    if (kind === 'pdf') {
+      if (!window.jspdf) throw new Error('PDF機能を読み込めませんでした。通信状態を確認してください。');
+      const pages = await renderPages();
+      const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
+      pages.forEach((c,i) => { if (i) pdf.addPage(); pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); });
+      toast('保存の準備ができました', 1200);
+      await saveFiles([{name: baseName()+'.pdf', blob: pdf.output('blob')}]);
+    } else if (kind === 'pages') {
+      const pages = await renderPages(), files = [];
+      for (let i = 0; i < pages.length; i++) files.push({name:`${baseName()}_p${i+1}.jpg`, blob: await toBlob(pages[i])});
+      toast('保存の準備ができました', 1200);
+      await saveFiles(files);
+    } else {
+      const files = [];
+      for (let i = 0; i < doc.steps.length; i++) files.push({name:`${baseName()}_手順${i+1}.jpg`, blob: await toBlob(await stepCanvas(doc.steps[i], 2400))});
+      toast('保存の準備ができました', 1200);
+      await saveFiles(files);
+    }
+  } catch (e) { toast(e && e.message ? e.message : '作成に失敗しました', 4000); }
+}
+$('#btnExport').onclick = () => {
+  const per = doc.layout || 2;
+  openModal(`<h3>保存・出力</h3>
+    <div class="fl">1ページに入れる手順の数
+      <div class="seg" id="segLayout">${[1,2,3].map(n => `<button type="button" data-n="${n}" aria-pressed="${n===per}">${n}つ</button>`).join('')}</div></div>
+    <button class="btn primary" type="button" data-x="pdf">PDFで保存(A4)</button>
+    <button class="btn" type="button" data-x="pages">ページを画像で保存(JPEG)</button>
+    <button class="btn" type="button" data-x="photos">書き込んだ写真だけ保存</button>
+    <p class="note" style="margin:0">スマホでは共有メニューが開きます。「画像を保存」「ファイルに保存」やLINE・メールに送れます。</p>`);
+  $('#segLayout').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; doc.layout = +b.dataset.n; scheduleSave(); $('#segLayout').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+  modalBox.querySelectorAll('[data-x]').forEach(b => b.onclick = () => runExport(b.dataset.x));
+};
+
+/* ---------- documents list ---------- */
+async function openDoc(d){ doc = d; if (!doc.layout) doc.layout = 2; fillForm(); renderSteps(); lsSet('yoryosho.current', doc.id); window.scrollTo(0,0); }
+$('#btnNew').onclick = async () => {
+  await saveNow();
+  if (!await confirmBox('新しい要領書を作りますか?(今の内容は一覧に残ります)', '作る')) return;
+  await openDoc(newDoc()); saveNow(); toast('新しい要領書を作りました');
+};
+$('#btnDocs').onclick = async () => {
+  await saveNow();
+  let list = [];
+  try { list = (await DB.all()).sort((a,b) => b.updated - a.updated); } catch {}
+  if (!list.length) list = [doc];
+  const fmt = t => { const d = new Date(t); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  openModal(`<h3>保存した要領書</h3><div class="doclist">${list.map(d => `<div class="docitem" data-id="${esc(d.id)}">
+      <div class="t"><b>${esc(d.title || '(無題)')}</b><span>手順 ${d.steps.length} ・ 更新 ${fmt(d.updated)}${d.id===doc.id?' ・ 編集中':''}</span></div>
+      <button class="icon" type="button" data-a="open">開く</button><button class="icon" type="button" data-a="dup">複製</button><button class="icon danger" type="button" data-a="del">削除</button></div>`).join('')}</div>
+    <button class="btn" type="button" id="dlClose">閉じる</button>`);
+  $('#dlClose').onclick = closeModal;
+  modalBox.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+    const id = b.closest('.docitem').dataset.id, d = list.find(x => x.id === id), a = b.dataset.a;
+    if (a === 'open') { closeModal(); await openDoc(d); }
+    else if (a === 'dup') { const c = JSON.parse(JSON.stringify(d)); c.id = uid(); c.title = (c.title || '(無題)') + ' のコピー'; c.updated = Date.now(); try { await DB.put(c); } catch {} closeModal(); await openDoc(c); toast('複製しました'); }
+    else if (a === 'del') {
+      closeModal();
+      if (!await confirmBox(`「${d.title || '(無題)'}」を削除しますか?元に戻せません`, '削除する', true)) return;
+      try { await DB.del(id); } catch {}
+      if (id === doc.id) { let rest = []; try { rest = (await DB.all()).sort((x,y) => y.updated - x.updated); } catch {} await openDoc(rest[0] || newDoc()); }
+      toast('削除しました');
+    }
+  });
+};
+
+/* ---------- sample ---------- */
+function sampleImage(kind){
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 900; const g = c.getContext('2d');
+  const bg = g.createLinearGradient(0,0,0,900); bg.addColorStop(0,'#8A949F'); bg.addColorStop(1,'#5D6670'); g.fillStyle = bg; g.fillRect(0,0,1200,900);
+  if (kind === 1) {
+    g.fillStyle = '#C9CED4'; rr(g,260,120,680,660,24); g.fill(); g.strokeStyle = '#7B848E'; g.lineWidth = 6; g.stroke();
+    g.fillStyle = '#2B3138'; g.fillRect(340,190,520,150); g.fillStyle = '#57D9A3'; g.font = '700 64px monospace'; g.fillText('0.42 MPa', 400, 290);
+    g.fillStyle = '#FCC419'; g.beginPath(); g.arc(440,560,110,0,7); g.fill();
+    g.fillStyle = '#C92A2A'; g.beginPath(); g.arc(440,560,78,0,7); g.fill();
+    g.fillStyle = '#2F9E44'; g.beginPath(); g.arc(720,520,52,0,7); g.fill();
+    g.fillStyle = '#495057'; g.beginPath(); g.arc(720,660,52,0,7); g.fill();
+  } else {
+    g.fillStyle = '#ADB5BD'; rr(g,200,150,800,600,20); g.fill(); g.strokeStyle = '#6C757D'; g.lineWidth = 6; g.stroke();
+    g.fillStyle = '#868E96'; g.beginPath(); g.arc(600,450,170,0,7); g.fill(); g.fillStyle = '#495057'; g.beginPath(); g.arc(600,450,70,0,7); g.fill();
+    for (const [x,y] of [[290,240],[910,240],[290,660],[910,660]]) {
+      g.fillStyle = '#DEE2E6'; g.beginPath(); for (let k=0;k<6;k++){ const t=k*Math.PI/3; g.lineTo(x+40*Math.cos(t), y+40*Math.sin(t)); } g.closePath(); g.fill();
+      g.strokeStyle = '#495057'; g.lineWidth = 4; g.stroke(); g.fillStyle = '#868E96'; g.beginPath(); g.arc(x,y,16,0,7); g.fill();
+    }
+  }
+  return c.toDataURL('image/jpeg', 0.85);
+}
+function sampleDoc(){
+  const d = newDoc();
+  Object.assign(d, {title:'【サンプル】冷却水ポンプ 点検作業要領書', workName:'冷却水ポンプ P-102 カバー点検', docNo:'WI-SAMPLE-001', author:'(サンプル)', notes:'作業前に必ず主電源を遮断し、施錠・表示を行うこと。保護手袋と保護メガネを着用する。'});
+  d.steps = [
+    {id:uid(), src:sampleImage(1), text:'操作盤の非常停止ボタンを押し、圧力計が 0 MPa まで下がったことを確認する。', point:'圧力が残ったままカバーを外さない', anns:[
+      {id:uid(), type:'arrow', color:'red', size:1, x1:0.12, y1:0.92, x2:0.30, y2:0.70},
+      {id:uid(), type:'text', color:'red', size:1, text:'非常停止ボタン', x:0.03, y:0.86},
+      {id:uid(), type:'rect', color:'yellow', size:1, x1:0.27, y1:0.19, x2:0.73, y2:0.40},
+      {id:uid(), type:'text', color:'yellow', size:0.9, text:'0 MPa を確認', x:0.60, y:0.06}]},
+    {id:uid(), src:sampleImage(2), text:'カバーのボルト4本を①→④の順に緩めて外す。', point:'対角の順に少しずつ緩める', anns:[
+      {id:uid(), type:'num', color:'red', size:1, n:1, x:0.24, y:0.17},
+      {id:uid(), type:'num', color:'red', size:1, n:2, x:0.82, y:0.82},
+      {id:uid(), type:'num', color:'red', size:1, n:3, x:0.82, y:0.17},
+      {id:uid(), type:'num', color:'red', size:1, n:4, x:0.24, y:0.82},
+      {id:uid(), type:'ellipse', color:'blue', size:1, x1:0.34, y1:0.28, x2:0.66, y2:0.72}]},
+  ];
+  return d;
+}
+
+/* ---------- boot ---------- */
+(async () => {
+  let d = null;
+  try {
+    const id = lsGet('yoryosho.current');
+    if (id) d = await DB.get(id);
+    if (!d) { const all = await DB.all(); if (all.length) d = all.sort((a,b) => b.updated - a.updated)[0]; else { d = sampleDoc(); await DB.put(d); } }
+  } catch { storageOk = false; d = sampleDoc(); $('#storageNote').textContent = 'この端末では自動保存が使えません。閉じる前にPDFか画像で保存してください。'; }
+  await openDoc(d);
+})();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
+})();
+</script>
+<!--APP-END-->
+</body>
+</html>
