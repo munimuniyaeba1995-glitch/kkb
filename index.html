@@ -65,6 +65,8 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 .thumb .hint{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.66);color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px}
 .addstep{width:100%;margin-top:16px;min-height:56px;border:2px dashed var(--line);background:transparent;border-radius:14px;font-weight:700;font-size:16px;color:var(--ink)}
 .thumb.nophoto{display:flex;align-items:center;justify-content:center;background:var(--bg);border:2px dashed var(--line);color:var(--muted);font-weight:700;font-size:15px;min-height:140px}
+.pagebreak{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.pagebreak::before,.pagebreak::after{content:"";flex:1;border-top:1px dashed var(--line)}
 .empty{border:2px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;color:var(--muted)}
 .empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
 .note{font-size:12px;color:var(--muted)}
@@ -239,7 +241,7 @@ const DB = {
 };
 let storageOk = true;
 
-const newDoc = () => ({id:uid(), title:'', workName:'', docNo:'', date:today(), author:'', notes:'', steps:[], layout:2, updated:Date.now()});
+const newDoc = () => ({id:uid(), title:'', workName:'', docNo:'', date:today(), author:'', notes:'', steps:[], layout:3, lv:1, updated:Date.now()});
 let doc = newDoc();
 let saveTimer = null;
 function scheduleSave(){
@@ -416,7 +418,14 @@ const stepsEl = $('#steps');
 function renderSteps(){
   stepsEl.innerHTML = '';
   $('#emptySteps').hidden = doc.steps.length > 0;
+  const per = clamp(doc.layout || 3, 1, 3);
   doc.steps.forEach((st,i) => {
+    if (i % per === 0) {
+      const pb = document.createElement('div'); pb.className = 'pagebreak';
+      const last = Math.min(i+per, doc.steps.length);
+      pb.textContent = `${i/per + 1}ページ目(手順 ${i+1}${last > i+1 ? '〜' + last : ''})`;
+      stepsEl.appendChild(pb);
+    }
     const card = document.createElement('article');
     card.className = 'step'; card.dataset.i = i;
     card.innerHTML = `<div class="step-head"><button class="step-no" type="button" data-act="renum" aria-label="手順${i+1}の番号を変える">手順 ${i+1} ▾</button>
@@ -450,7 +459,7 @@ stepsEl.addEventListener('click', async e => {
     if (!n || n === i+1) return;
     s.splice(n-1, 0, s.splice(i,1)[0]);
     renderSteps(); scheduleSave(); toast(`手順 ${n} に移動しました`);
-    setTimeout(() => stepsEl.children[n-1]?.scrollIntoView({behavior:'smooth', block:'center'}), 50);
+    setTimeout(() => stepsEl.querySelectorAll('.step')[n-1]?.scrollIntoView({behavior:'smooth', block:'center'}), 50);
     return;
   }
   if (act === 'up' && i > 0) [s[i-1], s[i]] = [s[i], s[i-1]];
@@ -470,7 +479,7 @@ async function addFiles(files){
   }
   renderSteps(); saveNow();
   toast(added ? `${added}枚追加しました。写真をタップすると文字や矢印を入れられます` : '写真を読み込めませんでした', 3200);
-  if (added) setTimeout(() => stepsEl.lastElementChild?.scrollIntoView({behavior:'smooth', block:'center'}), 100);
+  if (added) setTimeout(() => [...stepsEl.querySelectorAll('.step')].pop()?.scrollIntoView({behavior:'smooth', block:'center'}), 100);
 }
 $('#inCamera').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
 let photoTarget = null;
@@ -486,7 +495,7 @@ $('#btnAddStep').onclick = () => {
   doc.steps.push({id:uid(), src:null, anns:[], text:'', point:''});
   renderSteps(); saveNow();
   toast(`手順 ${doc.steps.length} を追加しました`);
-  setTimeout(() => { const last = stepsEl.lastElementChild; last?.scrollIntoView({behavior:'smooth', block:'center'}); }, 50);
+  setTimeout(() => [...stepsEl.querySelectorAll('.step')].pop()?.scrollIntoView({behavior:'smooth', block:'center'}), 50);
 };
 $('#inPick').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
 
@@ -751,7 +760,7 @@ async function fontsReady(){
 }
 async function renderPages(){
   await fontsReady();
-  const per = clamp(doc.layout || 2, 1, 3), total = Math.max(1, Math.ceil(doc.steps.length/per)), pages = [];
+  const per = clamp(doc.layout || 3, 1, 3), total = Math.max(1, Math.ceil(doc.steps.length/per)), pages = [];
   for (let p = 0; p < total; p++) {
     const c = document.createElement('canvas'); c.width = PW; c.height = PH;
     const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,PW,PH);
@@ -846,7 +855,7 @@ async function runExport(kind){
   } catch (e) { toast(e && e.message ? e.message : '作成に失敗しました', 4000); }
 }
 $('#btnExport').onclick = () => {
-  const per = clamp(doc.layout || 2, 1, 3);
+  const per = clamp(doc.layout || 3, 1, 3);
   openModal(`<h3>保存・出力</h3>
     <div class="fl">1ページに入れる手順の数
       <div class="seg" id="segLayout">${[1,2,3].map(n => `<button type="button" data-n="${n}" aria-pressed="${n===per}">${n}つ</button>`).join('')}</div></div>
@@ -854,12 +863,12 @@ $('#btnExport').onclick = () => {
     <button class="btn" type="button" data-x="pages">ページを画像で保存(JPEG)</button>
     <button class="btn" type="button" data-x="photos">書き込んだ写真だけ保存</button>
     <p class="note" style="margin:0">スマホでは共有メニューが開きます。「画像を保存」「ファイルに保存」やLINE・メールに送れます。</p>`);
-  $('#segLayout').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; doc.layout = +b.dataset.n; scheduleSave(); $('#segLayout').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+  $('#segLayout').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; doc.layout = +b.dataset.n; scheduleSave(); renderSteps(); $('#segLayout').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); };
   modalBox.querySelectorAll('[data-x]').forEach(b => b.onclick = () => runExport(b.dataset.x));
 };
 
 /* ---------- documents list ---------- */
-async function openDoc(d){ doc = d; if (!doc.layout) doc.layout = 2; fillForm(); renderSteps(); lsSet('yoryosho.current', doc.id); window.scrollTo(0,0); }
+async function openDoc(d){ doc = d; if (!doc.lv) { doc.layout = 3; doc.lv = 1; } fillForm(); renderSteps(); lsSet('yoryosho.current', doc.id); window.scrollTo(0,0); }
 $('#btnNew').onclick = async () => {
   await saveNow();
   if (!await confirmBox('新しい要領書を作りますか?(今の内容は一覧に残ります)', '作る')) return;
