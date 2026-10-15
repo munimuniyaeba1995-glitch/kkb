@@ -63,6 +63,8 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 .thumb{position:relative;display:block;width:100%;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--stage);min-height:120px}
 .thumb canvas{display:block;width:100%;height:auto}
 .thumb .hint{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.66);color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px}
+.addstep{width:100%;margin-top:16px;min-height:56px;border:2px dashed var(--line);background:transparent;border-radius:14px;font-weight:700;font-size:16px;color:var(--ink)}
+.thumb.nophoto{display:flex;align-items:center;justify-content:center;background:var(--bg);border:2px dashed var(--line);color:var(--muted);font-weight:700;font-size:15px;min-height:140px}
 .empty{border:2px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;color:var(--muted)}
 .empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
 .note{font-size:12px;color:var(--muted)}
@@ -148,8 +150,10 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
   <div class="steps" id="steps"></div>
   <div class="empty" id="emptySteps" hidden>
     <strong>まだ手順がありません</strong>
-    下の「撮影」か「写真を選ぶ」で写真を追加すると、1枚ごとに手順が1つ増えます。
+    下の「撮影」か「写真を選ぶ」で写真を追加すると、1枚ごとに手順が1つ増えます。写真なしで始めるなら「＋ 手順を追加」を押してください。
   </div>
+  <button class="addstep" id="btnAddStep" type="button">＋ 手順を追加(写真はあとで入れられます)</button>
+  <input type="file" id="inStepPhoto" accept="image/*" hidden>
   <p class="note" id="storageNote">入力内容はこの端末のブラウザに自動保存されます。大事な要領書はPDFでも保存しておいてください。</p>
 </div>
 
@@ -394,6 +398,7 @@ function hit(a,px,py,W,H){
 const hasHandles = a => a && (a.type==='arrow' || a.type==='rect' || a.type==='ellipse');
 
 async function stepCanvas(st, maxW){
+  if (!st.src) return null;
   const im = await loadImg(st.src);
   const k = Math.min(1, maxW/im.naturalWidth);
   const c = document.createElement('canvas');
@@ -418,15 +423,17 @@ function renderSteps(){
     card.innerHTML = `<div class="step-head"><button class="step-no" type="button" data-act="renum" aria-label="手順${i+1}の番号を変える">手順 ${i+1} ▾</button>
         <button class="icon" type="button" data-act="up" aria-label="手順${i+1}を上へ" ${i===0?'disabled':''}>↑</button>
         <button class="icon" type="button" data-act="down" aria-label="手順${i+1}を下へ" ${i===doc.steps.length-1?'disabled':''}>↓</button>
+        ${st.src ? `<button class="icon" type="button" data-act="photo" aria-label="手順${i+1}の写真を入れ替える">写真</button>` : ''}
         <button class="icon danger" type="button" data-act="del">削除</button></div>
-      <button class="thumb" type="button" data-act="edit" aria-label="手順${i+1}の写真に書き込む"><span class="hint">タップして書き込み</span></button>
+      ${st.src ? `<button class="thumb" type="button" data-act="edit" aria-label="手順${i+1}の写真に書き込む"><span class="hint">タップして書き込み</span></button>`
+               : `<button class="thumb nophoto" type="button" data-act="photo">＋ 写真を入れる(撮影・選択)</button>`}
       <label class="fl">作業内容<textarea id="st-text-${st.id}" data-k="text" rows="3" placeholder="例:カバーのボルト4本を外す"></textarea></label>
       <label class="fl point">急所・注意<textarea id="st-point-${st.id}" data-k="point" rows="2" placeholder="例:ボルトは対角の順に緩める"></textarea></label>`;
     card.querySelector('[data-k="text"]').value = st.text || '';
     card.querySelector('[data-k="point"]').value = st.point || '';
     stepsEl.appendChild(card);
     const thumb = card.querySelector('.thumb');
-    stepCanvas(st, 1000).then(c => thumb.prepend(c)).catch(() => {});
+    if (st.src) stepCanvas(st, 1000).then(c => c && thumb.prepend(c)).catch(() => {});
   });
 }
 stepsEl.addEventListener('input', e => {
@@ -437,6 +444,7 @@ stepsEl.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const i = +b.closest('.step').dataset.i, act = b.dataset.act, s = doc.steps;
   if (act === 'edit') return openEditor(i);
+  if (act === 'photo') { photoTarget = s[i].id; $('#inStepPhoto').click(); return; }
   if (act === 'renum') {
     if (s.length < 2) return toast('手順が2つ以上あると番号を入れ替えられます');
     const n = await numPicker(`手順 ${i+1} を何番にしますか?`, s.length, i+1, 'ほかの手順の番号は自動でずれます');
@@ -466,6 +474,21 @@ async function addFiles(files){
   if (added) setTimeout(() => stepsEl.lastElementChild?.scrollIntoView({behavior:'smooth', block:'center'}), 100);
 }
 $('#inCamera').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+let photoTarget = null;
+$('#inStepPhoto').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  const st = doc.steps.find(x => x.id === photoTarget); photoTarget = null;
+  if (!f || !st) return;
+  toast('写真を読み込み中…', 0);
+  try { st.src = await fileToDataURL(f); renderSteps(); saveNow(); toast('写真を入れました。タップすると文字や矢印を入れられます', 3000); }
+  catch { toast('写真を読み込めませんでした'); }
+});
+$('#btnAddStep').onclick = () => {
+  doc.steps.push({id:uid(), src:null, anns:[], text:'', point:''});
+  renderSteps(); saveNow();
+  toast(`手順 ${doc.steps.length} を追加しました`);
+  setTimeout(() => { const last = stepsEl.lastElementChild; last?.scrollIntoView({behavior:'smooth', block:'center'}); }, 50);
+};
 $('#inPick').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
 
 /* ---------- editor ---------- */
@@ -691,7 +714,8 @@ async function drawStep(ctx, st, n, x, y, w, h, mode, s=1){
   const by = y + bhd + 14*s, bh = h - bhd - 14*s;
   const c = await stepCanvas(st, 1600);
   let iw, ih, ix, tx, ty, tw, th;
-  if (mode === 'stack') {
+  if (!c) { tx = x; ty = by; tw = w; th = bh; }
+  else if (mode === 'stack') {
     const maxH = bh*(s < 1 ? 0.6 : 0.7), k = Math.min(w/c.width, maxH/c.height);
     iw = c.width*k; ih = c.height*k; ix = x + (w-iw)/2;
     tx = x; ty = by + ih + 16*s; tw = w; th = bh - ih - 16*s;
@@ -700,8 +724,10 @@ async function drawStep(ctx, st, n, x, y, w, h, mode, s=1){
     iw = c.width*k; ih = c.height*k; ix = x;
     tx = x + aw + 28; ty = by; tw = w - aw - 28; th = bh;
   }
-  ctx.drawImage(c, ix, by, iw, ih);
-  ctx.strokeStyle = '#C3CBD4'; ctx.lineWidth = 2; ctx.strokeRect(ix, by, iw, ih);
+  if (c) {
+    ctx.drawImage(c, ix, by, iw, ih);
+    ctx.strokeStyle = '#C3CBD4'; ctx.lineWidth = 2; ctx.strokeRect(ix, by, iw, ih);
+  }
   const text = st.text || '', point = st.point || '';
   const lab = 20*s, gap = 12*s;
   const pointH = point ? Math.min(th*0.45, lab*3 + Math.ceil(point.length/ Math.max(8, tw/(28*s))) * 40*s) : 0;
@@ -804,7 +830,7 @@ function showPreview(files, msg){
 
 async function runExport(kind){
   closeModal();
-  if (!doc.steps.length && kind !== 'pdf') return toast('先に写真を追加してください');
+  if (!doc.steps.length && kind !== 'pdf') return toast('先に手順を追加してください');
   toast('作成中…', 0);
   try {
     if (kind === 'pdf') {
@@ -821,7 +847,11 @@ async function runExport(kind){
       await saveFiles(files);
     } else {
       const files = [];
-      for (let i = 0; i < doc.steps.length; i++) files.push({name:`${baseName()}_手順${i+1}.jpg`, blob: await toBlob(await stepCanvas(doc.steps[i], 2400))});
+      for (let i = 0; i < doc.steps.length; i++) {
+        const c = await stepCanvas(doc.steps[i], 2400);
+        if (c) files.push({name:`${baseName()}_手順${i+1}.jpg`, blob: await toBlob(c)});
+      }
+      if (!files.length) return toast('写真の入った手順がありません');
       toast('保存の準備ができました', 1200);
       await saveFiles(files);
     }
