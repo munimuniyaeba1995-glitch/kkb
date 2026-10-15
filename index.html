@@ -56,7 +56,7 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 .steps{display:grid;gap:16px}
 .step{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
 .step-head{display:flex;align-items:center;gap:6px}
-.step-no{background:var(--ink);color:var(--bg);font-weight:700;border-radius:8px;padding:4px 12px;margin-right:auto;font-variant-numeric:tabular-nums}
+.step-no{background:var(--ink);color:var(--bg);border:0;font-weight:700;border-radius:8px;padding:6px 12px;margin-right:auto;font-variant-numeric:tabular-nums;min-height:38px}
 .icon{border:1px solid var(--line);background:transparent;border-radius:8px;min-width:42px;min-height:38px;padding:0 10px;font-weight:700}
 .icon.danger{color:var(--danger)}
 .icon:disabled{opacity:.3}
@@ -82,7 +82,11 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 .row .btn{flex:1}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{font-variant-numeric:tabular-nums}
+.numgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.numgrid button{min-height:48px;border:1px solid var(--line);background:var(--bg);border-radius:10px;font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.numgrid button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .seg button{border:0;background:transparent;padding:10px 4px;font-weight:700;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .doclist{display:grid;gap:8px}
@@ -96,8 +100,8 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 /* editor */
 .editor{position:fixed;inset:0;z-index:20;background:var(--stage);display:flex;flex-direction:column;color:#fff}
 .ed-top{display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#11161C}
-.ed-top .ttl{margin-right:auto;font-weight:700}
-.ed-btn{background:#232B35;border:1px solid #36414E;color:#fff;border-radius:10px;min-height:40px;padding:0 12px;font-weight:700;font-size:14px}
+.ed-top .ttl{margin-right:auto;font-weight:700;white-space:nowrap}
+.ed-btn{background:#232B35;border:1px solid #36414E;color:#fff;border-radius:10px;min-height:40px;padding:0 10px;font-weight:700;font-size:13px;white-space:nowrap}
 .ed-btn.done{background:var(--accent);border-color:var(--accent);color:#fff}
 .ed-btn.del{color:#FF8787}
 .ed-btn:disabled{opacity:.35}
@@ -151,7 +155,7 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 
 <nav class="bottombar" aria-label="操作">
   <div class="in">
-    <label class="btn filebtn">撮影<input type="file" id="inCamera" accept="image/*" capture="environment" aria-label="カメラで撮影"></label>
+    <label class="btn filebtn">撮影<input type="file" id="inCamera" accept="image/*" aria-label="カメラで撮影"></label>
     <label class="btn filebtn">写真を選ぶ<input type="file" id="inPick" accept="image/*" multiple aria-label="写真を選ぶ"></label>
     <button class="btn primary" id="btnExport" type="button">保存・出力</button>
   </div>
@@ -161,8 +165,8 @@ h2{font-size:13px;letter-spacing:.1em;color:var(--muted);margin:24px 0 8px;font-
 <div class="editor" id="editor" hidden>
   <div class="ed-top">
     <span class="ttl" id="edTitle">手順 1</span>
-    <button class="ed-btn" id="edUndo" type="button">元に戻す</button>
-    <button class="ed-btn" id="edEdit" type="button" hidden>文字を直す</button>
+    <button class="ed-btn" id="edUndo" type="button">戻す</button>
+    <button class="ed-btn" id="edEdit" type="button" hidden>文字修正</button>
     <button class="ed-btn del" id="edDel" type="button" hidden>消す</button>
     <button class="ed-btn done" id="edDone" type="button">完了</button>
   </div>
@@ -285,6 +289,17 @@ function textBox(initial){
   });
 }
 
+function numPicker(title, max, current, note=''){
+  return new Promise(res => {
+    let done = false;
+    const nums = Array.from({length:max}, (_,k) => k+1);
+    openModal(`<h3>${esc(title)}</h3>${note ? `<p class="note" style="margin:0">${esc(note)}</p>` : ''}
+      <div class="numgrid">${nums.map(n => `<button type="button" data-n="${n}" aria-pressed="${n===current}">${n}</button>`).join('')}</div>
+      <button class="btn" type="button" data-n="0">やめる</button>`, () => { if(!done) res(null); });
+    modalBox.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { done = true; const n = +b.dataset.n; res(n || null); closeModal(); });
+  });
+}
+
 /* ---------- images ---------- */
 const imgCache = new Map();
 function loadImg(src){
@@ -400,7 +415,7 @@ function renderSteps(){
   doc.steps.forEach((st,i) => {
     const card = document.createElement('article');
     card.className = 'step'; card.dataset.i = i;
-    card.innerHTML = `<div class="step-head"><span class="step-no">手順 ${i+1}</span>
+    card.innerHTML = `<div class="step-head"><button class="step-no" type="button" data-act="renum" aria-label="手順${i+1}の番号を変える">手順 ${i+1} ▾</button>
         <button class="icon" type="button" data-act="up" aria-label="手順${i+1}を上へ" ${i===0?'disabled':''}>↑</button>
         <button class="icon" type="button" data-act="down" aria-label="手順${i+1}を下へ" ${i===doc.steps.length-1?'disabled':''}>↓</button>
         <button class="icon danger" type="button" data-act="del">削除</button></div>
@@ -422,6 +437,15 @@ stepsEl.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const i = +b.closest('.step').dataset.i, act = b.dataset.act, s = doc.steps;
   if (act === 'edit') return openEditor(i);
+  if (act === 'renum') {
+    if (s.length < 2) return toast('手順が2つ以上あると番号を入れ替えられます');
+    const n = await numPicker(`手順 ${i+1} を何番にしますか?`, s.length, i+1, 'ほかの手順の番号は自動でずれます');
+    if (!n || n === i+1) return;
+    s.splice(n-1, 0, s.splice(i,1)[0]);
+    renderSteps(); scheduleSave(); toast(`手順 ${n} に移動しました`);
+    setTimeout(() => stepsEl.children[n-1]?.scrollIntoView({behavior:'smooth', block:'center'}), 50);
+    return;
+  }
   if (act === 'up' && i > 0) [s[i-1], s[i]] = [s[i], s[i-1]];
   else if (act === 'down' && i < s.length-1) [s[i+1], s[i]] = [s[i], s[i+1]];
   else if (act === 'del') { if (!await confirmBox(`手順 ${i+1} を削除しますか?`, '削除する', true)) return; s.splice(i,1); }
@@ -493,7 +517,8 @@ function syncUI(){
   const color = ed.sel ? ed.sel.color : ed.color, size = ed.sel ? (ed.sel.size||1) : ed.size;
   document.querySelectorAll('.sw').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === color));
   $('#edSize').value = size;
-  $('#edDel').hidden = !ed.sel; $('#edEdit').hidden = !(ed.sel && ed.sel.type === 'text');
+  $('#edDel').hidden = !ed.sel; $('#edEdit').hidden = !(ed.sel && (ed.sel.type === 'text' || ed.sel.type === 'num'));
+  $('#edEdit').textContent = ed.sel && ed.sel.type === 'num' ? '番号変更' : '文字修正';
   $('#edUndo').disabled = !ed.undo.length;
   $('#edHelp').textContent = ed.sel ? '選択中:ドラッグで移動、色・大きさも変えられます' : HELP[ed.tool];
 }
@@ -572,7 +597,13 @@ $('#edSize').addEventListener('change', () => { if (ed.sel && sizeSnap !== null 
 $('#edUndo').onclick = () => { if (!ed.undo.length) return; ed.step.anns = JSON.parse(ed.undo.pop()); ed.sel = null; changed(); };
 $('#edDel').onclick = () => { if (!ed.sel) return; pushUndo(JSON.stringify(ed.step.anns)); ed.step.anns.splice(ed.step.anns.indexOf(ed.sel), 1); ed.sel = null; changed(); };
 $('#edEdit').onclick = async () => {
-  const a = ed.sel; if (!a || a.type !== 'text') return;
+  const a = ed.sel; if (!a) return;
+  if (a.type === 'num') {
+    const n = await numPicker('番号を選んでください', 20, a.n);
+    if (!n || n === a.n) return;
+    pushUndo(JSON.stringify(ed.step.anns)); a.n = n; changed(); return;
+  }
+  if (a.type !== 'text') return;
   const snap = JSON.stringify(ed.step.anns), txt = await textBox(a.text);
   if (txt === null || txt === a.text) return;
   pushUndo(snap);
@@ -652,16 +683,18 @@ function drawRunningHead(ctx){
   ctx.fillStyle = '#18212C'; ctx.fillRect(M, M+42, PW-M*2, 3);
   return M + 66;
 }
-async function drawStep(ctx, st, n, x, y, w, h, per){
-  ctx.fillStyle = '#18212C'; rr(ctx, x, y, 132, 44, 8); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = font(24); ctx.textBaseline = 'middle'; ctx.fillText(`手順 ${n}`, x+18, y+23);
-  const by = y + 58, bh = h - 58;
+// mode: 'stack' = 写真の下に文字 (1つ/ページ と 4つ以上の2列), 'row' = 写真の右に文字 (2〜3つ/ページ)
+async function drawStep(ctx, st, n, x, y, w, h, mode, s=1){
+  const bw = 132*s, bhd = 44*s;
+  ctx.fillStyle = '#18212C'; rr(ctx, x, y, bw, bhd, 8*s); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = font(24*s); ctx.textBaseline = 'middle'; ctx.fillText(`手順 ${n}`, x+18*s, y+bhd/2+1);
+  const by = y + bhd + 14*s, bh = h - bhd - 14*s;
   const c = await stepCanvas(st, 1600);
   let iw, ih, ix, tx, ty, tw, th;
-  if (per === 1) {
-    const maxH = bh*0.7, k = Math.min(w/c.width, maxH/c.height);
+  if (mode === 'stack') {
+    const maxH = bh*(s < 1 ? 0.6 : 0.7), k = Math.min(w/c.width, maxH/c.height);
     iw = c.width*k; ih = c.height*k; ix = x + (w-iw)/2;
-    tx = x; ty = by + ih + 24; tw = w; th = bh - ih - 24;
+    tx = x; ty = by + ih + 16*s; tw = w; th = bh - ih - 16*s;
   } else {
     const aw = w*0.56, k = Math.min(aw/c.width, bh/c.height);
     iw = c.width*k; ih = c.height*k; ix = x;
@@ -670,20 +703,21 @@ async function drawStep(ctx, st, n, x, y, w, h, per){
   ctx.drawImage(c, ix, by, iw, ih);
   ctx.strokeStyle = '#C3CBD4'; ctx.lineWidth = 2; ctx.strokeRect(ix, by, iw, ih);
   const text = st.text || '', point = st.point || '';
-  const pointH = point ? Math.min(th*0.45, 60 + Math.ceil(point.length/ Math.max(8, tw/28)) * 40) : 0;
+  const lab = 20*s, gap = 12*s;
+  const pointH = point ? Math.min(th*0.45, lab*3 + Math.ceil(point.length/ Math.max(8, tw/(28*s))) * 40*s) : 0;
   ctx.fillStyle = '#18212C';
-  const t = fitText(ctx, text, tw, th - (point ? pointH + 16 : 0), 32, 18);
-  const endY = drawLines(ctx, t.lines, tx, ty, t.fs, ty + th - (point ? pointH + 16 : 0));
+  const t = fitText(ctx, text, tw, th - (point ? pointH + gap : 0), 32*s, Math.max(12, 18*s));
+  const endY = drawLines(ctx, t.lines, tx, ty, t.fs, ty + th - (point ? pointH + gap : 0));
   if (point) {
-    const py = Math.max(endY + 12, ty);
+    const py = Math.max(endY + gap, ty);
     const ph = Math.min(pointH, ty + th - py);
-    if (ph > 50) {
+    if (ph > lab*2.4) {
       ctx.fillStyle = '#FFF1E6'; ctx.fillRect(tx, py, tw, ph);
-      ctx.fillStyle = '#D9480F'; ctx.fillRect(tx, py, 6, ph);
-      ctx.font = font(20); ctx.textBaseline = 'top'; ctx.fillText('急所・注意', tx+18, py+10);
+      ctx.fillStyle = '#D9480F'; ctx.fillRect(tx, py, 6*s, ph);
+      ctx.font = font(lab); ctx.textBaseline = 'top'; ctx.fillText('急所・注意', tx+18*s, py+8*s);
       ctx.fillStyle = '#18212C';
-      const pt2 = fitText(ctx, point, tw-32, ph-46, 26, 16);
-      drawLines(ctx, pt2.lines, tx+18, py+40, pt2.fs, py+ph-4);
+      const pt2 = fitText(ctx, point, tw-32*s, ph-lab-20*s, 26*s, Math.max(11, 16*s));
+      drawLines(ctx, pt2.lines, tx+18*s, py+lab+14*s, pt2.fs, py+ph-4);
     }
   }
 }
@@ -697,11 +731,23 @@ async function renderPages(){
     const c = document.createElement('canvas'); c.width = PW; c.height = PH;
     const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,PW,PH);
     const top = p === 0 ? drawCover(ctx) : drawRunningHead(ctx);
-    const bottom = PH - M - 30, slotH = (bottom - top)/per;
+    const bottom = PH - M - 30, cw = PW - M*2;
     const slice = doc.steps.slice(p*per, (p+1)*per);
-    for (let i = 0; i < slice.length; i++) {
-      await drawStep(ctx, slice[i], p*per+i+1, M, top + i*slotH, PW - M*2, slotH - 28, per);
-      if (i < per-1 && i < slice.length-1) { ctx.fillStyle = '#D3DAE2'; ctx.fillRect(M, top + (i+1)*slotH - 14, PW-M*2, 2); }
+    if (per <= 3) {
+      const slotH = (bottom - top)/per;
+      for (let i = 0; i < slice.length; i++) {
+        await drawStep(ctx, slice[i], p*per+i+1, M, top + i*slotH, cw, slotH - 28, per === 1 ? 'stack' : 'row');
+        if (i < per-1 && i < slice.length-1) { ctx.fillStyle = '#D3DAE2'; ctx.fillRect(M, top + (i+1)*slotH - 14, cw, 2); }
+      }
+    } else {
+      // 4つ以上は2列で並べる
+      const rows = Math.ceil(per/2), gx = 32, colW = (cw - gx)/2, slotH = (bottom - top)/rows;
+      const s = clamp(slotH/520, 0.55, 0.8);
+      for (let i = 0; i < slice.length; i++) {
+        const r = Math.floor(i/2), col = i % 2;
+        await drawStep(ctx, slice[i], p*per+i+1, M + col*(colW+gx), top + r*slotH, colW, slotH - 24, 'stack', s);
+        if (col === 0 && i+2 < slice.length) { ctx.fillStyle = '#D3DAE2'; ctx.fillRect(M, top + (r+1)*slotH - 12, cw, 2); }
+      }
     }
     if (!doc.steps.length) { ctx.fillStyle = '#5A6676'; ctx.font = font(26,400); ctx.textBaseline = 'top'; ctx.fillText('手順がまだありません', M, top + 20); }
     ctx.fillStyle = '#5A6676'; ctx.font = font(20, 400); ctx.textBaseline = 'alphabetic';
@@ -785,7 +831,8 @@ $('#btnExport').onclick = () => {
   const per = doc.layout || 2;
   openModal(`<h3>保存・出力</h3>
     <div class="fl">1ページに入れる手順の数
-      <div class="seg" id="segLayout">${[1,2,3].map(n => `<button type="button" data-n="${n}" aria-pressed="${n===per}">${n}つ</button>`).join('')}</div></div>
+      <div class="seg" id="segLayout">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button type="button" data-n="${n}" aria-pressed="${n===per}">${n}</button>`).join('')}</div>
+      <span style="font-weight:400">4つ以上は2列で並びます</span></div>
     <button class="btn primary" type="button" data-x="pdf">PDFで保存(A4)</button>
     <button class="btn" type="button" data-x="pages">ページを画像で保存(JPEG)</button>
     <button class="btn" type="button" data-x="photos">書き込んだ写真だけ保存</button>
