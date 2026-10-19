@@ -22,10 +22,20 @@
 5. 「プロジェクト → エクスポート → Android → プロジェクトのエクスポート」で `build/android/AshenCrown.apk` ができる。
    スマホを USB デバッグ有効でつなげば、エディタ右上の Android アイコンでワンクリック実行もできます。
 
-### iPhone（iOS）について
-iOS版のビルドには **Mac と Xcode（無料）が必須**です（Windowsでは作れません）。
-自分の iPhone で試すだけなら無料の Apple ID で可能（7日ごとに入れ直し）、App Store 配信には Apple Developer Program（年額 $99）が必要です。
-プロジェクトはiOSでも同じコードで動く作りにしてあります（フェーズ11以降で対応）。
+### iPhone で遊ぶ（Web版・Safari）
+1. 共有されたリンクを **Safari** で開く（iOS 16.4 以降）。
+2. 読み込み（約9MB）が終わったら、**iPhone を横向き**にする。
+3. 「はじめから」をタップ。操作はAndroid版と同じタッチ操作です。
+- ホーム画面に追加すると全画面に近い表示で遊べます（共有ボタン →「ホーム画面に追加」）。
+- Web版は音声・セーブ機能の追加後も同じリンクで更新されます。
+
+アプリ版（App Store形式）の iOS ビルドには **Mac と Xcode（無料）が必須**です（Windowsでは作れません）。
+自分の iPhone に入れるだけなら無料の Apple ID で可能（7日ごとに入れ直し）、App Store 配信には Apple Developer Program（年額 $99）が必要です。
+
+### Web版を自分で書き出す
+Godot の「プロジェクト → エクスポート → Web」→ `build/web/`。
+1ファイル15MBまでの置き場所（Claudeのアーティファクト）向けには `tools/web_artifact/build.sh` で `build/web_artifact/` を作る。
+ブラウザで開くにはWebサーバーが必要です（例: `python -m http.server --directory build/web` → http://localhost:8000）。
 
 ## 1. PCで開いて遊ぶ・開発する（Windows）
 
@@ -97,6 +107,7 @@ PCでタッチ操作を試す: ポーズ → 「タッチ操作: ON」（マウ�
 
 ## 5. ドキュメント
 
-- [docs/DESIGN.md](docs/DESIGN.md) … 技術選定・試作版の仕様・フォルダ構成・リスク
+- [SPEC.md](SPEC.md) … ゲーム仕様（数値・敵・ルール・マップ）
+- [docs/DESIGN.md](docs/DESIGN.md) … 技術選定・設計・フォルダ構成・リスク
 - [docs/ROADMAP.md](docs/ROADMAP.md) … 開発フェーズと進捗
 - [JOURNAL.md](JOURNAL.md) … 変更履歴（JOURNAL）

@@ -1,0 +1,63 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ASHEN CROWN</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* 単一の暗い見た目（ゲーム画面）。テーマ切替はしない */
+  :root { --bg: #070607; --ink: #e9e2d0; --gold: #d4ae6b; --dim: #8c8170; color-scheme: dark; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+  #canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; outline: none; }
+  #boot { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; text-align: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    background: var(--bg); }
+  #boot h1 { margin: 0; font-size: clamp(28px, 7vw, 56px); letter-spacing: 0.08em; color: var(--gold); font-weight: 600; }
+  #boot p { margin: 0; color: var(--dim); font-size: 14px; }
+  #bar { width: min(320px, 70vw); height: 4px; background: #241f1a; margin: 6px auto 0; }
+  #bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
+  #rotate { position: fixed; inset: 0; display: none; place-content: center; text-align: center; background: var(--bg);
+    color: var(--ink); font-size: 18px; padding: 24px; z-index: 5; }
+  @media (orientation: portrait) and (max-width: 900px) { #rotate.on { display: grid; } }
+  @media (prefers-reduced-motion: reduce) { #bar i { transition: none; } }
+</style>
+<canvas id="canvas" tabindex="0">このブラウザでは遊べません（WebGL 2 が必要です）</canvas>
+<div id="boot">
+  <h1>ASHEN CROWN</h1>
+  <p id="msg">灰の王冠 — 読み込み中…（約9MB）</p>
+  <div id="bar"><i id="fill"></i></div>
+</div>
+<div id="rotate" class="on">📱 スマホを横向きにしてください</div>
+<script src="engine.js"></script>
+<script>
+// ゲーム本体(35MB)は1ファイルの上限を超えるため gzip 圧縮したもの(game-gz.wasm)を置き、ブラウザで展開して渡す。
+// データ(.pck)も配信できる拡張子に名前を変えてある
+const WASM_SIZE = __WASM_SIZE__;
+const realFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.endsWith('index.wasm')) {
+    const res = await realFetch('game-gz.wasm');
+    const body = res.body.pipeThrough(new DecompressionStream('gzip'));
+    return new Response(body, { headers: { 'Content-Type': 'application/wasm', 'Content-Length': String(WASM_SIZE) } });
+  }
+  if (url.endsWith('index.pck')) return realFetch('game-pck.wasm', init);
+  return realFetch(input, init);
+};
+const rotate = document.getElementById('rotate');
+const fitRotate = () => rotate.classList.toggle('on', innerHeight > innerWidth);
+addEventListener('resize', fitRotate); fitRotate();
+const msg = document.getElementById('msg'), fill = document.getElementById('fill');
+if (typeof DecompressionStream === 'undefined') {
+  msg.textContent = 'このブラウザは古いため遊べません。iOS 16.4 以降の Safari で開いてください。';
+} else {
+  const engine = new Engine({ args: [], canvasResizePolicy: 2, ensureCrossOriginIsolationHeaders: false,
+    executable: 'index', experimentalVK: false, focusCanvas: true, gdextensionLibs: [],
+    fileSizes: { 'index.pck': __PCK_SIZE__, 'index.wasm': WASM_SIZE } });
+  engine.startGame({
+    onProgress: (cur, total) => { if (total > 0) fill.style.width = Math.min(100, cur / total * 100) + '%'; },
+  }).then(() => { document.getElementById('boot').hidden = true; })
+    .catch(err => { msg.textContent = '起動できませんでした: ' + (err && err.message ? err.message : err); console.error(err); });
+}
+</script>

@@ -50,7 +50,7 @@ var _cache_rect: TextureRect
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_cache_vp = SubViewport.new()
 	_cache_vp.transparent_bg = true
@@ -62,8 +62,10 @@ func _ready() -> void:
 	_cache_vp.add_child(_painter)
 	_cache_rect = TextureRect.new()
 	_cache_rect.texture = _cache_vp.get_texture()
-	_cache_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_cache_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_cache_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# 画像の画素数が画面より大きくても枠を広げない（高解像度の端末でボタンが画面外にずれるのを防ぐ）
+	_cache_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_cache_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_cache_rect)
 	get_viewport().size_changed.connect(_layout)

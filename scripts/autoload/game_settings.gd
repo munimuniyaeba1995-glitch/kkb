@@ -36,8 +36,13 @@ func _ready() -> void:
 	_apply_input_mode()
 
 
+## スマホ・タブレットか（アプリ版、またはスマホのブラウザで開いたWeb版）
 func is_mobile() -> bool:
-	return OS.has_feature("mobile")
+	return OS.has_feature("mobile") or OS.has_feature("web_ios") or OS.has_feature("web_android")
+
+
+func is_web() -> bool:
+	return OS.has_feature("web")
 
 
 func set_quality(q: int) -> void:

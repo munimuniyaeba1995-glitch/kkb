@@ -20,14 +20,17 @@ static var _theme: Theme
 static var _serif: Font
 
 
-## 明朝/セリフ体（端末にあるものを使う。無ければ標準フォント）
+const SERIF_PATH := "res://assets/fonts/NotoSerifJP-SemiBold-subset.ttf"
+
+
+## 明朝体（同梱の Noto Serif JP。ゲームで使う文字だけに絞ってある）。
+## どの端末・ブラウザでも同じ見た目になる。足りない文字は端末のフォントで補う
 static func serif() -> Font:
 	if _serif == null:
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray([
-			"Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif CJK JP", "Noto Serif JP",
-			"Source Han Serif JP", "MS PMincho", "Noto Serif", "Georgia", "serif"])
-		f.font_weight = 600
+		var f: FontFile = load(SERIF_PATH)
+		var sys := SystemFont.new()
+		sys.font_names = PackedStringArray(["Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "serif"])
+		f.fallbacks = [sys]
 		_serif = f
 	return _serif
 
