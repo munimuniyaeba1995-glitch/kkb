@@ -4,6 +4,19 @@ extends Node
 
 const STICK_DEADZONE := 0.2
 
+var _mouse_bindings: Dictionary = {}
+## タッチの仮想スティックの値（-1〜1）。InputMap の強さ指定は他のアクション入力で
+## リセットされることがあるため、アナログ値はここで直接受け渡す
+var virtual_move := Vector2.ZERO
+
+
+## 移動入力（キーボード/パッド/仮想スティックの合成）。x=右, y=後ろ
+func get_move_vector() -> Vector2:
+	var v := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	if virtual_move.length() > STICK_DEADZONE:
+		v = virtual_move
+	return v.limit_length(1.0)
+
 
 func _ready() -> void:
 	_bind("move_forward", [_key(KEY_W), _axis(JOY_AXIS_LEFT_Y, -1.0)])
@@ -28,11 +41,24 @@ func _ready() -> void:
 	_bind("toggle_help", [_key(KEY_F1), _joy(JOY_BUTTON_BACK)])
 
 
+## タッチ操作中はマウスボタンの割り当てを外す（GameSettings から呼ばれる）
+func set_mouse_buttons_enabled(enabled: bool) -> void:
+	for action: StringName in _mouse_bindings:
+		var ev: InputEventMouseButton = _mouse_bindings[action]
+		var has := InputMap.action_has_event(action, ev)
+		if enabled and not has:
+			InputMap.action_add_event(action, ev)
+		elif not enabled and has:
+			InputMap.action_erase_event(action, ev)
+
+
 func _bind(action: StringName, events: Array) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action, STICK_DEADZONE)
 	for ev: InputEvent in events:
 		InputMap.action_add_event(action, ev)
+		if ev is InputEventMouseButton:
+			_mouse_bindings[action] = ev
 
 
 func _key(code: Key) -> InputEventKey:

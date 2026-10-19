@@ -23,6 +23,11 @@ var mat_dirt: StandardMaterial3D
 var mat_wood: StandardMaterial3D
 var mat_arena: StandardMaterial3D
 
+## 小物はこの距離より遠いと描画しない（霧で見えないため。スマホの描画負荷対策）
+const PROP_DRAW_DISTANCE := 55.0
+## 大きな壁・床の描画距離
+const WALL_DRAW_DISTANCE := 110.0
+
 
 func build() -> void:
 	_make_materials()
@@ -70,6 +75,7 @@ func _build_environment() -> void:
 	env.glow_intensity = 0.9
 	var we := WorldEnvironment.new()
 	we.environment = env
+	we.add_to_group("world_env")
 	add_child(we)
 
 	var moon := DirectionalLight3D.new()
@@ -78,6 +84,7 @@ func _build_environment() -> void:
 	moon.rotation_degrees = Vector3(-50, 35, 0)
 	moon.shadow_enabled = true
 	moon.directional_shadow_max_distance = 80.0
+	moon.add_to_group("sun")
 	add_child(moon)
 
 
@@ -104,6 +111,7 @@ func box(size: Vector3, pos: Vector3, mat: Material, yaw_deg: float = 0.0, colli
 	mi.mesh = bm
 	mi.material_override = mat
 	mi.position.y = size.y * 0.5
+	mi.visibility_range_end = WALL_DRAW_DISTANCE if maxf(size.x, size.z) > 6.0 else PROP_DRAW_DISTANCE
 	root.add_child(mi)
 	root.position = pos
 	root.rotation_degrees.y = yaw_deg
@@ -131,12 +139,15 @@ func pillar(pos: Vector3, height: float = 5.0, r: float = 0.45) -> void:
 	body.add_child(col)
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
+	cm.radial_segments = 12
+	cm.rings = 1
 	cm.top_radius = r * 0.9
 	cm.bottom_radius = r
 	cm.height = height
 	mi.mesh = cm
 	mi.material_override = mat_stone
 	mi.position.y = height * 0.5
+	mi.visibility_range_end = PROP_DRAW_DISTANCE
 	body.add_child(mi)
 	body.position = pos
 	add_child(body)
@@ -149,6 +160,8 @@ func dead_tree(pos: Vector3, height: float = 6.0) -> void:
 	for i in 3:
 		var branch := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
+		cm.radial_segments = 12
+		cm.rings = 1
 		cm.top_radius = 0.02
 		cm.bottom_radius = 0.12
 		cm.height = height * 0.4
@@ -156,6 +169,7 @@ func dead_tree(pos: Vector3, height: float = 6.0) -> void:
 		branch.material_override = mat_wood
 		branch.position = Vector3(0, height * (0.55 + i * 0.13), 0)
 		branch.rotation_degrees = Vector3(0, i * 130.0, 55.0)
+		branch.visibility_range_end = PROP_DRAW_DISTANCE
 		last.add_child(branch)
 
 
@@ -163,6 +177,8 @@ func brazier(pos: Vector3, energy: float = 2.0) -> void:
 	pillar(pos, 1.2, 0.3)
 	var fire := MeshInstance3D.new()
 	var sm := SphereMesh.new()
+	sm.radial_segments = 16
+	sm.rings = 8
 	sm.radius = 0.25
 	sm.height = 0.4
 	fire.mesh = sm
@@ -173,12 +189,16 @@ func brazier(pos: Vector3, energy: float = 2.0) -> void:
 	m.emission_energy_multiplier = 6.0
 	fire.material_override = m
 	fire.position = pos + Vector3(0, 1.35, 0)
+	fire.visibility_range_end = PROP_DRAW_DISTANCE
 	add_child(fire)
 	var light := OmniLight3D.new()
 	light.light_color = Color(1, 0.55, 0.25)
 	light.light_energy = energy
 	light.omni_range = 10.0
 	light.position = pos + Vector3(0, 1.8, 0)
+	light.distance_fade_enabled = true
+	light.distance_fade_begin = 35.0
+	light.distance_fade_length = 10.0
 	add_child(light)
 
 
@@ -302,6 +322,8 @@ func _build_boss_area() -> void:
 	floor_body.add_child(col)
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
+	cm.radial_segments = 32
+	cm.rings = 1
 	cm.top_radius = radius + 1.0
 	cm.bottom_radius = radius + 1.0
 	cm.height = 1.0

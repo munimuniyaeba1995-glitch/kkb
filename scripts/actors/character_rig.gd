@@ -78,6 +78,8 @@ func build(cfg: Dictionary) -> void:
 	# 胴体（足元からの高さ height の 0.78 を占めるカプセル）
 	var torso := MeshInstance3D.new()
 	var cap := CapsuleMesh.new()
+	cap.radial_segments = 16
+	cap.rings = 4
 	cap.radius = radius
 	cap.height = height * 0.78
 	torso.mesh = cap
@@ -88,6 +90,8 @@ func build(cfg: Dictionary) -> void:
 	# 頭
 	var head := MeshInstance3D.new()
 	var sph := SphereMesh.new()
+	sph.radial_segments = 16
+	sph.rings = 8
 	sph.radius = radius * 0.62
 	sph.height = radius * 1.24
 	head.mesh = sph
@@ -100,6 +104,8 @@ func build(cfg: Dictionary) -> void:
 	for side: float in [-1.0, 1.0]:
 		var eye := MeshInstance3D.new()
 		var em := SphereMesh.new()
+		em.radial_segments = 8
+		em.rings = 4
 		em.radius = radius * 0.11
 		em.height = radius * 0.22
 		eye.mesh = em
@@ -111,6 +117,8 @@ func build(cfg: Dictionary) -> void:
 		for side: float in [-1.0, 1.0]:
 			var horn := MeshInstance3D.new()
 			var cone := CylinderMesh.new()
+			cone.radial_segments = 12
+			cone.rings = 1
 			cone.top_radius = 0.0
 			cone.bottom_radius = radius * 0.15
 			cone.height = radius * 0.9

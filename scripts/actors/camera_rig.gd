@@ -16,6 +16,7 @@ var mouse_sensitivity := 0.0025
 var stick_sensitivity := 2.6
 var camera: Camera3D
 var spring: SpringArm3D
+var _shake := 0.0
 
 
 func _ready() -> void:
@@ -30,9 +31,22 @@ func _ready() -> void:
 	add_child(spring)
 	camera = Camera3D.new()
 	camera.fov = 70.0
-	camera.far = 300.0
+	camera.far = 140.0
 	spring.add_child(camera)
 	camera.current = true
+	add_child(FX.ambient_ash(GameSettings.PARTICLE_AMOUNT[GameSettings.quality]))
+
+
+## タッチのカメラ操作など、マウス以外からの回転入力（ラジアン）
+func add_look(delta: Vector2) -> void:
+	if lock_target == null:
+		yaw -= delta.x
+	pitch = clampf(pitch - delta.y, PITCH_MIN, PITCH_MAX)
+
+
+## 画面を揺らす（被弾・重い攻撃）。amount はおおよその揺れ幅（m）
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
 
 
 func snap_to_target() -> void:
@@ -69,6 +83,13 @@ func _process(delta: float) -> void:
 		yaw -= stick.x * stick_sensitivity * delta
 		pitch = clampf(pitch - stick.y * stick_sensitivity * delta, PITCH_MIN, PITCH_MAX)
 	rotation = Vector3(pitch, yaw, 0)
+	if _shake > 0.001:
+		camera.h_offset = randf_range(-_shake, _shake)
+		camera.v_offset = randf_range(-_shake, _shake)
+		_shake = move_toward(_shake, 0.0, delta * 0.8)
+	else:
+		camera.h_offset = 0.0
+		camera.v_offset = 0.0
 
 
 ## カメラ基準の前方向・右方向（水平）

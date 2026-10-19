@@ -35,7 +35,14 @@ func _ready() -> void:
 		"test_secret_wall_and_chest",
 		"test_fall_death",
 		"test_pause_toggle",
+		"test_graphics_presets",
+		"test_touch_joystick_moves_player",
+		"test_touch_buttons",
+		"test_touch_camera_drag",
+		"test_touch_pause_button",
+		"test_touch_only_boss_kill",
 	]
+	GameSettings.persist = false
 	for t: String in tests:
 		current = t
 		await _setup()
@@ -63,6 +70,9 @@ func _setup() -> void:
 
 func _teardown() -> void:
 	get_tree().paused = false
+	if GameSettings.touch_controls:
+		main.touch.release_all()
+		GameSettings.set_touch_controls(false)
 	main.queue_free()
 	await frames(2)
 
@@ -316,8 +326,10 @@ func test_elite_combo_and_ranges() -> void:
 	player().input_enabled = false
 	player().max_health = 99999.0
 	player().set_health_full()
+	# 攻撃選択は乱数なので、結果が毎回同じになるよう種を固定する
+	e.rng.seed = 20261019
 	var seen := {}
-	for i in 60 * 12:
+	for i in 60 * 20:
 		await frames(1)
 		if e.state == Enemy.State.ATTACK:
 			seen[e.current_attack.id] = true
@@ -482,3 +494,182 @@ func test_pause_toggle() -> void:
 	check(get_tree().paused and main.hud.pause_panel.visible, "ポーズできない")
 	main.set_paused(false)
 	check(not get_tree().paused and not main.hud.pause_panel.visible, "ポーズ解除できない")
+
+
+# ---------------------------------------------------------------- 画質・タッチ操作
+
+func test_graphics_presets() -> void:
+	for q in 3:
+		GameSettings.set_quality(q)
+		await frames(2)
+		check(is_equal_approx(get_tree().root.scaling_3d_scale, GameSettings.RENDER_SCALE[q]),
+			"画質%dの解像度倍率が反映されない" % q)
+		check(Engine.max_fps == GameSettings.MAX_FPS[q], "画質%dのFPS上限が反映されない" % q)
+	var sun: DirectionalLight3D = get_tree().get_first_node_in_group("sun")
+	check(sun.directional_shadow_max_distance == GameSettings.SHADOW_DISTANCE[2], "影の距離が反映されない")
+	GameSettings.set_quality(GameSettings.Quality.HIGH)
+
+
+## タッチ座標はウィンドウ座標で渡す必要がある（画面の拡大縮小を逆変換する）
+func to_window(pos: Vector2) -> Vector2:
+	return get_viewport().get_final_transform() * pos
+
+
+func touch(index: int, pos: Vector2, pressed: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.position = to_window(pos)
+	ev.pressed = pressed
+	Input.parse_input_event(ev)
+
+
+func drag(index: int, from: Vector2, to: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = index
+	ev.position = to_window(to)
+	ev.relative = to_window(to) - to_window(from)
+	Input.parse_input_event(ev)
+
+
+func tap(pos: Vector2) -> void:
+	touch(5, pos, true)
+	await frames(3)
+	touch(5, pos, false)
+	await frames(1)
+
+
+func enable_touch() -> void:
+	GameSettings.set_touch_controls(true)
+	await frames(2)
+	check(main.touch.visible, "タッチUIが表示されない")
+
+
+func screen() -> Vector2:
+	return get_viewport().get_visible_rect().size
+
+
+func test_touch_joystick_moves_player() -> void:
+	isolate([])
+	await enable_touch()
+	await seconds(0.3)
+	var p := player()
+	var start := p.global_position
+	var right: Vector3 = main.camera_rig.flat_right()
+	var origin := Vector2(260, screen().y - 220)
+	touch(0, origin, true)
+	await frames(2)
+	drag(0, origin, origin + Vector2(220, 0))
+	await seconds(0.6)
+	var moved := (p.global_position - start).dot(right)
+	check(moved > 1.0, "スティックを右に倒しても右へ動かない（%.2f m）" % moved)
+	check(p.state == Player.State.FREE, "スティック操作で攻撃が暴発した（疑似マウス）")
+	touch(0, origin + Vector2(220, 0), false)
+	await seconds(0.4)
+	check(Vector2(p.velocity.x, p.velocity.z).length() < 0.3, "指を離しても止まらない")
+
+
+func test_touch_buttons() -> void:
+	isolate([])
+	await enable_touch()
+	await seconds(0.3)
+	var t: TouchControls = main.touch
+	var p := player()
+	await tap(t.button_center("attack_light"))
+	check(p.state == Player.State.ATTACK, "攻撃ボタンで攻撃しない")
+	await seconds(1.0)
+	await tap(t.button_center("dodge"))
+	await frames(2)
+	check(p.state == Player.State.DODGE, "回避ボタンの短押しで回避しない")
+	await seconds(1.0)
+	# ガード（押している間）
+	touch(6, t.button_center("guard"), true)
+	await frames(3)
+	check(p.guarding, "ガードボタンでガードしない")
+	touch(6, t.button_center("guard"), false)
+	await frames(3)
+	check(not p.guarding, "ガードボタンを離してもガードが解けない")
+	# ダッシュ = スティック + 回避長押し
+	var origin := Vector2(260, screen().y - 220)
+	touch(0, origin, true)
+	drag(0, origin, origin + Vector2(0, -220))
+	touch(7, t.button_center("dodge"), true)
+	await seconds(0.5)
+	check(p.sprinting, "回避ボタン長押しでダッシュしない (held=%s %.2f move=%.2f st=%.0f state=%d)" % [
+		p.dodge_held, p.dodge_held_time, p._move_vector().length(), p.stamina, p.state])
+	touch(7, t.button_center("dodge"), false)
+	touch(0, origin, false)
+	await frames(3)
+	check(p.state != Player.State.DODGE, "長押しを離した時に回避が暴発した")
+
+
+func test_touch_camera_drag() -> void:
+	isolate([])
+	await enable_touch()
+	var yaw: float = main.camera_rig.yaw
+	var pos := Vector2(screen().x * 0.6, screen().y * 0.4)
+	touch(1, pos, true)
+	for i in 10:
+		drag(1, pos, pos + Vector2(20, 0))
+		pos += Vector2(20, 0)
+		await frames(1)
+	touch(1, pos, false)
+	check(main.camera_rig.yaw < yaw - 0.5, "右半分のドラッグでカメラが回らない")
+	check(player().state == Player.State.FREE, "カメラ操作で攻撃が暴発した")
+
+
+func test_touch_pause_button() -> void:
+	isolate([])
+	await enable_touch()
+	await tap(main.touch.button_center("pause"))
+	check(get_tree().paused, "II ボタンでポーズしない")
+	await tap(main.touch.button_center("attack_light"))
+	check(player().state == Player.State.FREE, "ポーズ中に攻撃できてしまう")
+	main.set_paused(false)
+
+
+## タッチ操作だけで「ロックオン → 接近 → 攻撃 → 回避」してボスを倒す
+func test_touch_only_boss_kill() -> void:
+	var b: Boss = main.level.boss
+	isolate([b])
+	await enable_touch()
+	var p := player()
+	p.max_health = 99999.0
+	p.set_health_full()
+	var arena: BossArena = main.level.arena
+	p.global_position = arena.global_position + Vector3(0, 0.2, 10)
+	main.camera_rig.yaw = 0.0
+	main.camera_rig.snap_to_target()
+	await seconds(0.3)
+	check(arena.active, "ボス戦が始まらない")
+	b.health = 160.0
+	var t: TouchControls = main.touch
+	await tap(t.button_center("lock_on"))
+	check(p.lock_target == b, "ロックボタンでボスにロックオンできない")
+	var origin := Vector2(260, screen().y - 220)
+	var dodges := 0
+	for i in 60 * 25:
+		if b.is_dead:
+			break
+		var dist := p.global_position.distance_to(b.global_position)
+		if i % 20 == 0:
+			if dist > 3.6:
+				touch(0, origin, true)
+				drag(0, origin, origin + Vector2(0, -220))
+			else:
+				touch(0, origin, false)
+		# ボスの予備動作が終わる直前に回避ボタン
+		if b.state == Enemy.State.ATTACK and b.attack_phase == 0 \
+				and b.state_time > b.current_attack.windup * b.windup_mult - 0.2 \
+				and p.state != Player.State.DODGE and dodges < 50:
+			touch(3, t.button_center("dodge"), true)
+			await frames(2)
+			touch(3, t.button_center("dodge"), false)
+			dodges += 1
+		elif i % 24 == 0 and dist <= 3.6:
+			touch(2, t.button_center("attack_light"), true)
+			await frames(2)
+			touch(2, t.button_center("attack_light"), false)
+		await frames(1)
+	touch(0, origin, false)
+	check(b.is_dead, "タッチ操作だけでボスを倒せない（ボスHP %.0f）" % b.health)
+	check(GameState.boss_defeated, "ボス撃破が記録されない")

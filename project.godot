@@ -8,13 +8,14 @@ config_version=5
 config/name="ASHEN CROWN"
 config/description="Original dark fantasy 3D action RPG prototype"
 run/main_scene="res://scenes/title.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.3", "Mobile")
 config/icon="res://icon.svg"
 
 [autoload]
 
 InputSetup="*res://scripts/autoload/input_setup.gd"
 GameState="*res://scripts/autoload/game_state.gd"
+GameSettings="*res://scripts/autoload/game_settings.gd"
 
 [display]
 
@@ -22,6 +23,7 @@ window/size/viewport_width=1600
 window/size/viewport_height=900
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/handheld/orientation=4
 
 [physics]
 
@@ -29,4 +31,5 @@ common/physics_ticks_per_second=60
 
 [rendering]
 
-anti_aliasing/quality/msaa_3d=1
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

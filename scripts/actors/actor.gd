@@ -4,6 +4,8 @@ extends CharacterBody3D
 
 signal health_changed(current: float, max_value: float)
 signal died(actor: Actor)
+## 自分の攻撃が相手に当たった（演出用）
+signal hit_landed(target: Node3D, result: int, attack: AttackData)
 
 enum HitResult { IGNORED, HIT, BLOCKED, DODGED }
 
@@ -85,6 +87,12 @@ func run_hit_query(attack: AttackData, t: float, already_hit: Array, damage_scal
 			atk.damage = attack.damage * damage_scale
 		var r: int = target.receive_attack(atk, self)
 		results_out.append({"target": target, "result": r})
+		if r == HitResult.HIT or r == HitResult.BLOCKED:
+			var t3 := target as Node3D
+			var spark_pos := t3.global_position.lerp(global_transform * local_offset, 0.5)
+			spark_pos.y = global_transform.origin.y + local_offset.y
+			FX.hit_spark(get_parent(), spark_pos, r == HitResult.BLOCKED, attack.damage >= 50.0)
+			hit_landed.emit(target, r, attack)
 	return results_out
 
 

@@ -8,6 +8,7 @@ var level: LevelRuins
 var player: Player
 var camera_rig: CameraRig
 var hud: HUD
+var touch: TouchControls
 var ash_drop: AshDrop
 var death_timer := -1.0
 
@@ -43,10 +44,19 @@ func _ready() -> void:
 	level.boss.phase_changed.connect(
 		func(_p: int) -> void: hud.notify("守護者の王冠が燃え上がる——動きが激しくなった"))
 	player.died.connect(_on_player_died)
+	player.hit_landed.connect(_on_player_hit_landed)
+	for e in level.enemies:
+		e.hit_landed.connect(_on_enemy_hit_landed)
 
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	# タッチ操作（スマホ。PCでも設定でON可）。HUD の一部として最前面に置く
+	touch = TouchControls.new()
+	touch.process_mode = Node.PROCESS_MODE_ALWAYS
+	hud.add_child(touch)
+	touch.look.connect(camera_rig.add_look)
+	GameSettings.changed.connect(_on_settings_changed)
+	_on_settings_changed()
 	hud.notify("灰降る廃都・外縁")
-	hud.notify("F1 で操作説明を表示")
+	hud.notify("II → 操作説明 で操作を確認" if GameSettings.touch_controls else "F1 で操作説明を表示")
 
 
 func _process(delta: float) -> void:
@@ -59,14 +69,43 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and not get_tree().paused \
-			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			and not GameSettings.touch_controls and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func set_paused(paused: bool) -> void:
 	get_tree().paused = paused
 	hud.set_paused(paused)
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if paused else Input.MOUSE_MODE_CAPTURED
+	if paused:
+		touch.release_all()
+	_update_mouse_mode()
+
+
+## PCのマウス操作時だけカーソルを隠して固定する（タッチ操作・ポーズ中は表示）
+func _update_mouse_mode() -> void:
+	if get_tree().paused or GameSettings.touch_controls:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _on_settings_changed() -> void:
+	touch.visible = GameSettings.touch_controls
+	if not touch.visible:
+		touch.release_all()
+	GameSettings.apply_graphics(get_tree())
+	_update_mouse_mode()
+
+
+func _on_player_hit_landed(_target: Node3D, _result: int, attack: AttackData) -> void:
+	if attack.damage >= 50.0:
+		camera_rig.shake(0.06)
+
+
+func _on_enemy_hit_landed(target: Node3D, result: int, attack: AttackData) -> void:
+	if target == player:
+		var amount := 0.1 if result == Actor.HitResult.BLOCKED else 0.18
+		camera_rig.shake(amount * (1.6 if attack.damage >= 80.0 else 1.0))
 
 
 func _go_to_title() -> void:
@@ -89,6 +128,7 @@ func _update_interaction() -> void:
 				best = d
 				nearest = it
 	hud.set_prompt(nearest.prompt if nearest else "")
+	touch.set_interact_available(nearest != null)
 	if nearest and Input.is_action_just_pressed("interact"):
 		nearest.interact(player)
 

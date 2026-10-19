@@ -21,6 +21,14 @@ const CONTROLS_TEXT := """移動 ………… WASD / 左スティック
 調べる・休息 E / Y
 ポーズ ……… Esc / Start　　操作説明の表示切替 … F1"""
 
+const TOUCH_HELP_TEXT := """左半分をなぞる … 移動（スティックが指の位置に出る）
+右半分をなぞる … カメラ
+攻撃 … 弱攻撃（連打で3連撃）　強攻撃 … 溜めて振り下ろす
+回避 … 短く押す（出始めは無敵）／長押しでダッシュ
+ガード … 押している間ガード　跳 … ジャンプ
+ロック … 近くの敵にロックオン　回復 … 回復薬を飲む
+調べる … 篝火・宝箱の近くで表示　II … ポーズ"""
+
 var player: Player
 var hp_bar: ProgressBar
 var hp_back: ProgressBar
@@ -39,6 +47,11 @@ var help_panel: PanelContainer
 var notify_queue: Array[String] = []
 var notify_time := 0.0
 var boss_ref: Boss
+var quality_buttons: Array[Button] = []
+var touch_button: Button
+var stats_button: Button
+var stats_label: Label
+var help_label: Label
 
 
 func _ready() -> void:
@@ -124,12 +137,17 @@ func _ready() -> void:
 	root.add_child(lock_marker)
 
 	help_panel = _panel()
-	var help_label := _label(CONTROLS_TEXT, 18)
+	help_label = _label(CONTROLS_TEXT, 18)
 	help_panel.add_child(help_label)
 	help_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	help_panel.position = Vector2(-560, 24)
 	help_panel.visible = false
 	root.add_child(help_panel)
+
+	# 性能表示（FPS・描画命令数・メモリ）。最適化の確認用
+	stats_label = _label("", 16)
+	stats_label.position = Vector2(32, 80)
+	root.add_child(stats_label)
 
 	_build_pause_menu(root)
 	GameState.ash_changed.connect(_on_ash_changed)
@@ -142,25 +160,90 @@ func _ready() -> void:
 func _build_pause_menu(root: Control) -> void:
 	pause_panel = _panel()
 	pause_panel.set_anchors_preset(Control.PRESET_CENTER)
-	pause_panel.position = Vector2(-330, -260)
-	pause_panel.custom_minimum_size = Vector2(660, 0)
+	pause_panel.position = Vector2(-260, -250)
+	pause_panel.custom_minimum_size = Vector2(520, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	pause_panel.add_child(v)
 	var title := _label("ポーズ", 36)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
-	v.add_child(_label(CONTROLS_TEXT, 17))
-	var resume := Button.new()
-	resume.text = "再開する"
-	resume.pressed.connect(func() -> void: resume_pressed.emit())
-	v.add_child(resume)
-	var to_title := Button.new()
-	to_title.text = "タイトルへ戻る"
-	to_title.pressed.connect(func() -> void: title_pressed.emit())
-	v.add_child(to_title)
+	v.add_child(_menu_button("再開する", func() -> void: resume_pressed.emit()))
+
+	# 画質（低/中/高）
+	var qrow := HBoxContainer.new()
+	qrow.add_theme_constant_override("separation", 8)
+	qrow.add_child(_label("画質", 22))
+	for i in GameSettings.QUALITY_NAMES.size():
+		var b := _menu_button(GameSettings.QUALITY_NAMES[i],
+			func() -> void: GameSettings.set_quality(i))
+		b.toggle_mode = true
+		b.custom_minimum_size = Vector2(90, 56)
+		quality_buttons.append(b)
+		qrow.add_child(b)
+	v.add_child(qrow)
+	touch_button = _menu_button("", func() -> void:
+		GameSettings.set_touch_controls(not GameSettings.touch_controls))
+	v.add_child(touch_button)
+	stats_button = _menu_button("", func() -> void:
+		GameSettings.set_show_stats(not GameSettings.show_stats))
+	v.add_child(stats_button)
+	v.add_child(_menu_button("操作説明", toggle_help))
+	v.add_child(_menu_button("タイトルへ戻る", func() -> void: title_pressed.emit()))
 	pause_panel.visible = false
 	root.add_child(pause_panel)
+	GameSettings.changed.connect(_refresh_settings)
+	_refresh_settings()
+
+
+func _menu_button(text: String, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 56)
+	b.add_theme_font_size_override("font_size", 22)
+	b.pressed.connect(on_press)
+	return b
+
+
+func _refresh_settings() -> void:
+	for i in quality_buttons.size():
+		quality_buttons[i].set_pressed_no_signal(i == int(GameSettings.quality))
+	touch_button.text = "タッチ操作: " + ("ON" if GameSettings.touch_controls else "OFF")
+	stats_button.text = "性能表示: " + ("ON" if GameSettings.show_stats else "OFF")
+	stats_label.visible = GameSettings.show_stats
+	_apply_layout()
+
+
+## タッチ操作時は右下・下中央をボタンが使うので、ボスゲージを上、残灰を左上に移す
+func _apply_layout() -> void:
+	var touch := GameSettings.touch_controls
+	if touch:
+		_place(boss_box, 0.5, 0.0, Vector2(-350, 22), 700.0)
+		boss_bar.custom_minimum_size = Vector2(700, 14)
+		_place(ash_label, 0.0, 0.0, Vector2(32, 72), 300.0)
+		ash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_place(notify_label, 0.5, 0.0, Vector2(-450, 110), 900.0)
+		_place(stats_label, 0.0, 0.0, Vector2(32, 108), 900.0)
+	else:
+		_place(boss_box, 0.5, 1.0, Vector2(-450, -130), 900.0)
+		boss_bar.custom_minimum_size = Vector2(900, 14)
+		_place(ash_label, 1.0, 1.0, Vector2(-290, -64), 260.0)
+		ash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_place(notify_label, 0.5, 0.0, Vector2(-450, 90), 900.0)
+		_place(stats_label, 0.0, 0.0, Vector2(32, 80), 900.0)
+	_on_flasks_changed(GameState.flasks, GameState.flask_max)
+
+
+## アンカー（画面上の基準点 0〜1）と、そこからの位置・幅で配置する
+func _place(c: Control, ax: float, ay: float, pos: Vector2, width: float) -> void:
+	c.anchor_left = ax
+	c.anchor_right = ax
+	c.anchor_top = ay
+	c.anchor_bottom = ay
+	c.offset_left = pos.x
+	c.offset_top = pos.y
+	c.offset_right = pos.x + width
+	c.offset_bottom = pos.y + c.get_combined_minimum_size().y
 
 
 func _bar(color: Color, size: Vector2, transparent_bg: bool = false) -> ProgressBar:
@@ -231,7 +314,8 @@ func _on_ash_changed(value: int) -> void:
 
 
 func _on_flasks_changed(current: int, max_value: int) -> void:
-	flask_label.text = "灰硝子の小瓶  %d / %d   [R]" % [current, max_value]
+	var key := "" if GameSettings.touch_controls else "   [R]"
+	flask_label.text = "灰硝子の小瓶  %d / %d%s" % [current, max_value, key]
 
 
 func show_boss(boss: Boss) -> void:
@@ -253,7 +337,8 @@ func _on_boss_health(current: float, _max_value: float) -> void:
 
 
 func set_prompt(text: String) -> void:
-	prompt_label.text = ("[E] " + text) if text != "" else ""
+	var key := "" if GameSettings.touch_controls else "[E] "
+	prompt_label.text = (key + text) if text != "" else ""
 
 
 func notify(text: String) -> void:
@@ -277,6 +362,7 @@ func set_paused(paused: bool) -> void:
 
 
 func toggle_help() -> void:
+	help_label.text = TOUCH_HELP_TEXT if GameSettings.touch_controls else CONTROLS_TEXT
 	help_panel.visible = not help_panel.visible
 
 
@@ -301,6 +387,13 @@ func _process(delta: float) -> void:
 	else:
 		notify_label.text = ""
 	_update_lock_marker()
+	if stats_label.visible:
+		stats_label.text = "FPS %d  描画命令 %d  物体 %d  メモリ %.0fMB  画質:%s" % [
+			Performance.get_monitor(Performance.TIME_FPS),
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+			GameSettings.QUALITY_NAMES[GameSettings.quality]]
 
 
 func _update_lock_marker() -> void:

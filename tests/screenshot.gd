@@ -6,11 +6,24 @@ const MAIN_SCENE := preload("res://scenes/main.tscn")
 
 
 func _ready() -> void:
+	GameSettings.persist = false
 	DirAccess.make_dir_recursive_absolute("res://tests/output")
 	var main: Node = MAIN_SCENE.instantiate()
 	add_child(main)
 	await _wait(1.0)
 	await _shot("01_start")
+	# 画質ごとの描画負荷（同じ視点で比較）
+	for q in [2, 1, 0]:
+		GameSettings.set_quality(q)
+		await _wait(0.5)
+		await RenderingServer.frame_post_draw
+		print("perf quality=%s draw_calls=%d objects=%d primitives=%d vram=%.0fMB" % [
+			GameSettings.QUALITY_NAMES[q],
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+	GameSettings.set_quality(1 if GameSettings.touch_controls else 2)
 
 	# 強敵の予備動作（赤く光る）を正面から
 	var elite: Enemy = null
@@ -59,5 +72,6 @@ func _wait(s: float) -> void:
 func _shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	img.save_png("res://tests/output/%s.png" % name)
+	var prefix := "touch_" if GameSettings.touch_controls else ""
+	img.save_png("res://tests/output/%s%s.png" % [prefix, name])
 	print("saved ", name)

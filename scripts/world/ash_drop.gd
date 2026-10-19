@@ -11,6 +11,8 @@ var orb: MeshInstance3D
 func _ready() -> void:
 	orb = MeshInstance3D.new()
 	var sph := SphereMesh.new()
+	sph.radial_segments = 16
+	sph.rings = 8
 	sph.radius = 0.25
 	sph.height = 0.5
 	orb.mesh = sph

@@ -160,7 +160,7 @@ func request_action(action: String) -> void:
 
 func _move_vector() -> Vector3:
 	var v2 := move_override if use_move_override \
-		else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+		else InputSetup.get_move_vector()
 	var fwd := camera_rig.flat_forward() if camera_rig else Vector3.FORWARD
 	var right := camera_rig.flat_right() if camera_rig else Vector3.RIGHT
 	return (right * v2.x - fwd * v2.y).limit_length(1.0)

@@ -1,9 +1,33 @@
 # ASHEN CROWN（灰の王冠）
 
-オリジナルのダークファンタジー3DアクションRPG（試作版 v0.1）。
+オリジナルのダークファンタジー3DアクションRPG（試作版 v0.2）。**スマートフォン（Android）優先・PC対応**。
 無料のゲームエンジン **Godot 4.3** と GDScript で作っています。素材ファイルは使わず、形状・UIはすべてコードで生成しています。
 
-## 1. 起動方法（Windows）
+## 0. スマホで遊ぶ（Android）
+
+### A. 配布されたAPKを入れる（いちばん簡単）
+1. `AshenCrown.apk` をスマホにコピー（USB・Googleドライブなど）。
+2. スマホでファイルを開く →「提供元不明のアプリ」のインストールを許可 → インストール。
+3. 起動すると横画面で始まります。対応: **Android 7.0 以上・64bit端末（arm64）**。
+
+### B. 自分のPCでAPKを作る
+1. **JDK 17**（無料: Eclipse Temurin https://adoptium.net/）をインストール。
+2. **Android SDK**: Android Studio（無料）を入れて SDK Manager から
+   「Android SDK Platform-Tools」「Android SDK Build-Tools 34」「Android SDK Command-line Tools」を入れる。
+3. Godot の「エディタ → エディタ設定 → エクスポート → Android」で
+   *Java SDK Path*（例 `C:\Program Files\Eclipse Adoptium\jdk-17...`）と
+   *Android SDK Path*（例 `C:\Users\<名前>\AppData\Local\Android\Sdk`）を設定。
+   デバッグ用キーストアは Godot が自動で用意します。
+4. 「エディタ → エクスポートテンプレートの管理 → ダウンロード」（初回のみ・約1GB）。
+5. 「プロジェクト → エクスポート → Android → プロジェクトのエクスポート」で `build/android/AshenCrown.apk` ができる。
+   スマホを USB デバッグ有効でつなげば、エディタ右上の Android アイコンでワンクリック実行もできます。
+
+### iPhone（iOS）について
+iOS版のビルドには **Mac と Xcode（無料）が必須**です（Windowsでは作れません）。
+自分の iPhone で試すだけなら無料の Apple ID で可能（7日ごとに入れ直し）、App Store 配信には Apple Developer Program（年額 $99）が必要です。
+プロジェクトはiOSでも同じコードで動く作りにしてあります（フェーズ11以降で対応）。
+
+## 1. PCで開いて遊ぶ・開発する（Windows）
 
 1. **Godot 4.3（Standard版・無料）をダウンロード**
    https://godotengine.org/download/archive/4.3-stable/ → 「Windows 64-bit」
@@ -19,6 +43,22 @@
    エディタ右上の ▶（または **F5**）でタイトル画面から起動します。
 
 ## 2. 操作方法
+
+### スマートフォン（タッチ）
+| 操作 | 方法 |
+|---|---|
+| 移動 | 画面左側をなぞる（触れた場所に仮想スティックが出る） |
+| カメラ | 画面右側の空いている所をなぞる |
+| 攻撃 / 強攻撃 | 「攻撃」（連打で3連撃）/「強攻撃」 |
+| 回避 / ダッシュ | 「回避」を短く押す / 長押し＋移動 |
+| ガード | 「ガード」を押している間 |
+| ロックオン | 「ロック」 |
+| 回復・ジャンプ・調べる | 「回復」「跳」「調べる」（篝火や宝箱の近くでだけ表示） |
+| ポーズ・設定 | 右上の「II」（画質 低/中/高、タッチ操作ON/OFF、性能表示） |
+
+PCでタッチ操作を試す: ポーズ → 「タッチ操作: ON」（マウスが指の代わりになる）。
+
+### PC（キーボード・マウス / ゲームパッド）
 
 | 操作 | キーボード/マウス | ゲームパッド |
 |---|---|---|
@@ -48,14 +88,15 @@
 
 ## 4. 自動テスト（開発者向け）
 
-戦闘・ガード・回避の無敵・ボス戦・死亡と回収・休息・隠し壁などを、実際の物理と当たり判定で検証します（22項目）。
+戦闘・ガード・回避の無敵・ボス戦・死亡と回収・休息・隠し壁・**タッチ操作（スティック・ボタン・カメラ・タッチだけでボス撃破）**・画質設定を、実際の物理と当たり判定で検証します（28項目）。
 
 - Windows: `set GODOT=C:\Godot\Godot_v4.3-stable_win64_console.exe` → `tools\run_tests.bat`
 - Linux/macOS: `GODOT=/path/to/godot tools/run_tests.sh`
 
-最後に `結果: 22 / 22 PASS` と出れば成功です。
+最後に `結果: 28 / 28 PASS` と出れば成功です。
 
 ## 5. ドキュメント
 
 - [docs/DESIGN.md](docs/DESIGN.md) … 技術選定・試作版の仕様・フォルダ構成・リスク
 - [docs/ROADMAP.md](docs/ROADMAP.md) … 開発フェーズと進捗
+- [CHANGELOG.md](CHANGELOG.md) … 変更履歴

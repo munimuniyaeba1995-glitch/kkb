@@ -21,6 +21,8 @@ func _ready() -> void:
 	radius = 2.2
 	var base := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
+	cyl.radial_segments = 12
+	cyl.rings = 1
 	cyl.top_radius = 0.45
 	cyl.bottom_radius = 0.6
 	cyl.height = 0.5
@@ -32,6 +34,8 @@ func _ready() -> void:
 	add_child(base)
 	var ember := MeshInstance3D.new()
 	var sph := SphereMesh.new()
+	sph.radial_segments = 16
+	sph.rings = 8
 	sph.radius = 0.28
 	sph.height = 0.56
 	ember.mesh = sph
@@ -49,6 +53,7 @@ func _ready() -> void:
 	flame.omni_range = 9.0
 	flame.position.y = 1.2
 	flame.shadow_enabled = true
+	flame.add_to_group("shadow_lights")
 	add_child(flame)
 
 
