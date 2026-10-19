@@ -1,0 +1,8 @@
+# Godot
+.godot/
+*.tmp
+export/
+build/
+# test output
+tests/output/
+tests_output.log
