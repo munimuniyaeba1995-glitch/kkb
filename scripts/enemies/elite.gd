@@ -17,10 +17,11 @@ func setup() -> void:
 	think_delay = 0.7
 	lock_height = 1.5
 	build_body({
-		"height": 2.3, "radius": 0.5,
-		"body_color": Color(0.16, 0.16, 0.19),
-		"weapon_color": Color(0.3, 0.3, 0.33), "weapon_length": 1.7,
-		"eye_color": Color(1.0, 0.15, 0.1), "eye_energy": 3.0, "horns": true,
+		"archetype": "brute", "height": 2.5, "radius": 0.5,
+		"body_color": Color(0.14, 0.14, 0.16), "skin_color": Color(0.3, 0.26, 0.24),
+		"cloth_color": Color(0.1, 0.08, 0.08),
+		"weapon_color": Color(0.32, 0.3, 0.3), "weapon_length": 1.6,
+		"eye_color": Color(1.0, 0.12, 0.05), "eye_energy": 4.0,
 	})
 	add_attack(AttackData.create({
 		"id": "combo1", "damage": 40.0, "poise_damage": 20.0,

@@ -14,10 +14,11 @@ func setup() -> void:
 	preferred_distance = 1.5
 	think_delay = 0.6
 	build_body({
-		"height": 1.75, "radius": 0.38,
-		"body_color": Color(0.42, 0.38, 0.33),
-		"weapon_color": Color(0.45, 0.4, 0.35), "weapon_length": 0.9,
-		"eye_color": Color(1.0, 0.55, 0.2), "eye_energy": 2.0,
+		"archetype": "ghoul", "height": 1.85, "radius": 0.38,
+		"body_color": Color(0.3, 0.27, 0.24), "skin_color": Color(0.4, 0.38, 0.35),
+		"cloth_color": Color(0.16, 0.13, 0.1),
+		"weapon_color": Color(0.42, 0.33, 0.25), "weapon_length": 0.85,
+		"eye_color": Color(1.0, 0.55, 0.15), "eye_energy": 3.0,
 	})
 	add_attack(AttackData.create({
 		"id": "slash", "damage": 30.0, "poise_damage": 15.0,

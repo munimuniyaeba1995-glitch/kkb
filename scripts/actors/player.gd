@@ -84,11 +84,11 @@ func _ready() -> void:
 	rig = CharacterRig.new()
 	add_child(rig)
 	rig.build({
-		"height": 1.8, "radius": 0.35,
-		"body_color": Color(0.32, 0.3, 0.36),
-		"weapon_color": Color(0.78, 0.78, 0.82),
-		"weapon_length": 1.0, "eye_color": Color(0.6, 0.8, 1.0), "eye_energy": 0.6,
-		"shield": true,
+		"archetype": "knight", "height": 1.8, "radius": 0.35,
+		"body_color": Color(0.46, 0.45, 0.48), "cloth_color": Color(0.32, 0.08, 0.07),
+		"weapon_color": Color(0.82, 0.82, 0.86),
+		"weapon_length": 0.95, "eye_color": Color(0.6, 0.85, 1.0), "eye_energy": 1.2,
+		"shield": true, "draw_distance": 200.0,
 	})
 	_define_attacks()
 	set_health_full()

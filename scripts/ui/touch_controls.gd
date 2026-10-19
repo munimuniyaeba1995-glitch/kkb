@@ -9,16 +9,23 @@ extends Control
 
 signal look(relative: Vector2)
 
+## ボタン画像を描くための部品。描いた結果は画像として使い回す（毎フレーム描かない）
+class ButtonPainter extends Control:
+	var controls: TouchControls
+
+	func _draw() -> void:
+		controls.draw_buttons(self)
+
 ## 720p基準のボタン配置（右下隅からの距離, 半径, ラベル）。画面サイズに合わせて拡大縮小する
 const LAYOUT := {
-	"attack_light": {"offset": Vector2(150, 150), "r": 72.0, "label": "攻撃"},
-	"attack_heavy": {"offset": Vector2(300, 105), "r": 48.0, "label": "強攻撃"},
-	"dodge": {"offset": Vector2(135, 315), "r": 54.0, "label": "回避"},
-	"guard": {"offset": Vector2(285, 245), "r": 48.0, "label": "ガード"},
-	"jump": {"offset": Vector2(425, 90), "r": 40.0, "label": "跳"},
-	"lock_on": {"offset": Vector2(100, 450), "r": 40.0, "label": "ロック"},
-	"use_item": {"offset": Vector2(430, 215), "r": 40.0, "label": "回復"},
-	"interact": {"offset": Vector2(420, 350), "r": 46.0, "label": "調べる"},
+	"attack_light": {"offset": Vector2(150, 150), "r": 74.0, "label": "攻撃", "icon": "sword"},
+	"attack_heavy": {"offset": Vector2(305, 100), "r": 50.0, "label": "強攻撃", "icon": "heavy"},
+	"dodge": {"offset": Vector2(135, 320), "r": 56.0, "label": "回避", "icon": "dodge"},
+	"guard": {"offset": Vector2(290, 245), "r": 50.0, "label": "ガード", "icon": "shield"},
+	"jump": {"offset": Vector2(435, 85), "r": 40.0, "label": "跳躍", "icon": "jump"},
+	"lock_on": {"offset": Vector2(105, 465), "r": 42.0, "label": "ロック", "icon": "lock"},
+	"use_item": {"offset": Vector2(440, 210), "r": 42.0, "label": "回復", "icon": "flask"},
+	"interact": {"offset": Vector2(430, 355), "r": 48.0, "label": "調べる", "icon": "interact"},
 }
 const PAUSE_OFFSET := Vector2(60, 60)
 const STICK_RADIUS := 100.0
@@ -35,13 +42,30 @@ var stick_origin := Vector2.ZERO
 var stick_pos := Vector2.ZERO
 var look_index := -1
 var interact_available := false
-var font: Font
+## ボタンは SubViewport に一度だけ描いて画像として表示する（Godot 4.3 のモバイル描画は
+## 2D図形をまとめて描けず、ボタンだけで描画命令が100回以上になるため）
+var _cache_vp: SubViewport
+var _painter: ButtonPainter
+var _cache_rect: TextureRect
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	font = ThemeDB.fallback_font
+	_cache_vp = SubViewport.new()
+	_cache_vp.transparent_bg = true
+	_cache_vp.disable_3d = true
+	_cache_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_cache_vp)
+	_painter = ButtonPainter.new()
+	_painter.controls = self
+	_cache_vp.add_child(_painter)
+	_cache_rect = TextureRect.new()
+	_cache_rect.texture = _cache_vp.get_texture()
+	_cache_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_cache_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	_cache_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_cache_rect)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 
@@ -64,7 +88,20 @@ func _layout() -> void:
 		radii[action] = float(def["r"]) * ui_scale
 	centers["pause"] = Vector2(vp.x - PAUSE_OFFSET.x * ui_scale - safe_margin.x, PAUSE_OFFSET.y * ui_scale)
 	radii["pause"] = 34.0 * ui_scale
+	# 画像の解像度は実際の画面の画素数に合わせる（拡大でぼやけないように）
+	var px := maxf(1.0, get_viewport().get_final_transform().get_scale().x)
+	_cache_vp.size = Vector2i(ceili(vp.x * px), ceili(vp.y * px))
+	_painter.scale = Vector2(px, px)
+	_painter.size = vp
+	_refresh_buttons()
 	queue_redraw()
+
+
+## ボタンの見た目が変わった時だけ画像を描き直す
+func _refresh_buttons() -> void:
+	if _painter:
+		_painter.queue_redraw()
+		_cache_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 func button_center(action: String) -> Vector2:
@@ -74,7 +111,7 @@ func button_center(action: String) -> Vector2:
 func set_interact_available(on: bool) -> void:
 	if interact_available != on:
 		interact_available = on
-		queue_redraw()
+		_refresh_buttons()
 
 
 func _button_at(pos: Vector2) -> String:
@@ -111,7 +148,7 @@ func _on_touch_down(index: int, pos: Vector2) -> void:
 		if action == "pause" or not get_tree().paused:
 			pressed_by[action] = index
 			_send_action(action, true)
-			queue_redraw()
+			_refresh_buttons()
 		return
 	if get_tree().paused:
 		return
@@ -135,6 +172,7 @@ func _on_touch_up(index: int) -> void:
 		_set_move(Vector2.ZERO)
 	if index == look_index:
 		look_index = -1
+	_refresh_buttons()
 	queue_redraw()
 
 
@@ -146,6 +184,7 @@ func release_all() -> void:
 	stick_index = -1
 	look_index = -1
 	_set_move(Vector2.ZERO)
+	_refresh_buttons()
 	queue_redraw()
 
 
@@ -177,33 +216,40 @@ func _set_move(v: Vector2) -> void:
 	InputSetup.virtual_move = v
 
 
-func _draw() -> void:
-	var white := Color(1, 1, 1, 0.85)
-	var fill := Color(0.1, 0.09, 0.08, 0.45)
-	var fill_on := Color(0.85, 0.6, 0.3, 0.6)
-	var edge := Color(0.85, 0.75, 0.55, 0.7)
-	var fs := int(18 * ui_scale)
+## ボタン一式を描く（ButtonPainter から呼ばれる）
+func draw_buttons(ci: CanvasItem) -> void:
+	var fs := int(14 * ui_scale)
 	for action: String in centers:
 		if action == "interact" and not interact_available:
 			continue
 		var c: Vector2 = centers[action]
 		var r: float = radii[action]
-		draw_circle(c, r, fill_on if pressed_by.has(action) else fill)
-		draw_arc(c, r, 0, TAU, 40, edge, 2.0 * ui_scale, true)
-		var label: String = "II" if action == "pause" else LAYOUT[action]["label"]
-		var sz := font.get_string_size(label, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-		draw_string(font, c + Vector2(-sz.x * 0.5, sz.y * 0.3), label,
-			HORIZONTAL_ALIGNMENT_CENTER, -1, fs, white)
+		if action == "pause":
+			UITheme.draw_round_button(ci, c, r, "pause", "", pressed_by.has(action), fs)
+			continue
+		var def: Dictionary = LAYOUT[action]
+		UITheme.draw_round_button(ci, c, r, def["icon"], def["label"], pressed_by.has(action), fs,
+			action == "attack_light" or action == "interact")
+
+
+## 毎フレーム変わるもの（仮想スティック）だけ直接描く
+func _draw() -> void:
+	var fs := int(14 * ui_scale)
 	# 仮想スティック（触れている間だけ表示）
+	var r := STICK_RADIUS * ui_scale
 	if stick_index != -1:
-		var r := STICK_RADIUS * ui_scale
-		draw_circle(stick_origin, r, Color(0, 0, 0, 0.25))
-		draw_arc(stick_origin, r, 0, TAU, 48, edge, 2.0 * ui_scale, true)
-		draw_circle(stick_pos, r * 0.42, Color(0.9, 0.8, 0.6, 0.55))
+		draw_circle(stick_origin, r, Color(0, 0, 0, 0.3))
+		draw_arc(stick_origin, r, 0, TAU, 48, UITheme.GOLD_DIM, 2.0 * ui_scale, true)
+		draw_arc(stick_origin, r * 0.92, 0, TAU, 48, Color(UITheme.GOLD_DIM, 0.3), 1.0, true)
+		draw_circle(stick_pos, r * 0.42, Color(0.1, 0.08, 0.06, 0.8))
+		draw_arc(stick_pos, r * 0.42, 0, TAU, 32, UITheme.GOLD, 2.5 * ui_scale, true)
+		UITheme.draw_icon(self, "ember", stick_pos, r * 0.14, UITheme.GOLD)
 	else:
 		# 触れていない時は左下に薄くガイドを出す
 		var vp := get_viewport_rect().size
 		var g := Vector2(200 * ui_scale + safe_margin.x, vp.y - 170 * ui_scale)
-		draw_arc(g, STICK_RADIUS * ui_scale, 0, TAU, 48, Color(1, 1, 1, 0.15), 2.0 * ui_scale, true)
-		draw_string(font, g + Vector2(-30 * ui_scale, 6 * ui_scale), "移動",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, fs, Color(1, 1, 1, 0.3))
+		draw_arc(g, r, 0, TAU, 48, Color(UITheme.GOLD_DIM, 0.35), 2.0 * ui_scale, true)
+		var f := UITheme.serif()
+		var sz := f.get_string_size("移動", HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
+		draw_string(f, g + Vector2(-sz.x * 0.5, sz.y * 0.3), "移動", HORIZONTAL_ALIGNMENT_CENTER, -1, fs,
+			Color(UITheme.TEXT, 0.4))

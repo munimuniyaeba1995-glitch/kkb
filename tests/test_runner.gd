@@ -41,6 +41,8 @@ func _ready() -> void:
 		"test_touch_camera_drag",
 		"test_touch_pause_button",
 		"test_touch_only_boss_kill",
+		"test_character_rigs",
+		"test_title_screen_loads",
 	]
 	GameSettings.persist = false
 	for t: String in tests:
@@ -673,3 +675,37 @@ func test_touch_only_boss_kill() -> void:
 	touch(0, origin, false)
 	check(b.is_dead, "タッチ操作だけでボスを倒せない（ボスHP %.0f）" % b.health)
 	check(GameState.boss_defeated, "ボス撃破が記録されない")
+
+
+# ---------------------------------------------------------------- 見た目
+
+func test_character_rigs() -> void:
+	var expected := {"Player": "knight", "Grunt": "ghoul", "Elite": "brute", "Boss": "colossus"}
+	var actors: Array = [player()] + main.level.enemies
+	for a: Actor in actors:
+		var key: String = "Player" if a is Player else ("Boss" if a is Boss else ("Elite" if a is Elite else "Grunt"))
+		check(a.rig.archetype == expected[key], "%s の体型が %s でない" % [key, expected[key]])
+		check(a.rig.leg_l != null and a.rig.knee_r != null and a.rig.spine != null, "%s に脚・背骨の関節がない" % key)
+	# 歩くと脚が振れる
+	isolate([])
+	var p := player()
+	p.input_enabled = false
+	p.use_move_override = true
+	p.move_override = Vector2(0, -1)
+	var max_swing := 0.0
+	for i in 40:
+		await frames(1)
+		max_swing = maxf(max_swing, absf(p.rig.leg_l.rotation.x))
+	check(max_swing > 0.2, "歩いても脚が動かない（%.2f）" % max_swing)
+
+
+func test_title_screen_loads() -> void:
+	var title: Control = load("res://scenes/title.tscn").instantiate()
+	add_child(title)
+	await frames(5)
+	var buttons := title.find_children("*", "Button", true, false)
+	check(buttons.size() >= 2, "タイトルのボタンが足りない")
+	check(title.get("cam") != null and (title.get("cam") as Camera3D).current, "タイトルの背景カメラが有効でない")
+	title.queue_free()
+	await frames(2)
+	main.camera_rig.camera.current = true

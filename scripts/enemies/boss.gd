@@ -26,10 +26,11 @@ func setup() -> void:
 	can_aggro = false
 	always_aggro = true
 	build_body({
-		"height": 5.2, "radius": 1.2,
-		"body_color": Color(0.27, 0.25, 0.24),
-		"weapon_color": Color(0.5, 0.45, 0.4), "weapon_length": 3.0,
-		"eye_color": Color(1.0, 0.6, 0.15), "eye_energy": 4.0, "horns": true,
+		"archetype": "colossus", "height": 5.4, "radius": 1.2,
+		"body_color": Color(0.22, 0.2, 0.19), "skin_color": Color(0.3, 0.27, 0.25),
+		"cloth_color": Color(0.12, 0.1, 0.09),
+		"weapon_color": Color(0.45, 0.4, 0.36), "weapon_length": 3.2,
+		"eye_color": Color(1.0, 0.6, 0.15), "eye_energy": 5.0, "draw_distance": 150.0,
 	})
 	add_attack(AttackData.create({
 		"id": "sweep", "damage": 70.0, "poise_damage": 40.0,

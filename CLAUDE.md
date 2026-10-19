@@ -7,7 +7,7 @@
 - `README.md` … 起動方法・操作方法・テスト手順（プレイヤー/開発者が最初に読む）
 - `docs/DESIGN.md` … 技術選定・仕様・フォルダ構成・リスク（設計の正）
 - `docs/ROADMAP.md` … フェーズ計画と進捗（チェックリスト）
-- `CHANGELOG.md` … バージョンごとの変更履歴
+- `JOURNAL.md` … バージョンごとの変更履歴（JOURNAL）
 - `CLAUDE.md` … AIが守る開発ルール（本ファイル）
 
 ## コード規約
@@ -19,6 +19,8 @@
 - 既存作品の名称・キャラ・マップ・音楽をコピーしない。
 - プラットフォーム判定は `GameSettings` だけで行う。タッチ入力は `TouchControls` に閉じ込め、ゲーム本体は InputMap のアクションだけを読む（移動は `InputSetup.get_move_vector()`）。
 - スマホの負荷: 新しいメッシュは分割数を抑え、小物には `visibility_range_end` を付ける。粒子は CPUParticles3D。
+- 見た目: キャラクターは `CharacterRig`（archetype で体型を作り分け）、UIの色・枠・フォント・アイコンは `UITheme` を使う。
+  Godot 4.3 のモバイル描画は2D図形をまとめられないため、変化の少ないUIは画像にキャッシュする（例: `TouchControls`）。
 - 外部素材は CC0 / CC-BY 等のみ。導入時に `docs/CREDITS.md` へ記録。
 
 ## 検証（報告前に必ず実行）
