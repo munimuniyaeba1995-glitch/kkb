@@ -6,6 +6,8 @@ extends Interactable
 signal rested(checkpoint: Checkpoint)
 
 var checkpoint_name := "残り火の篝"
+## 復活したプレイヤーが向く方向（0 = -Z方向＝エリアの奥）
+var respawn_yaw := 0.0
 var flame: OmniLight3D
 
 
@@ -59,6 +61,6 @@ func interact(_player: Player) -> void:
 	rested.emit(self)
 
 
-## 復活時に立つ位置（篝火の手前）
+## 復活時に立つ位置（篝火の +Z 側 1.6m。篝火の向きで決まる）
 func spawn_point() -> Vector3:
 	return global_position + global_transform.basis.z * 1.6

@@ -94,9 +94,7 @@ func _update_interaction() -> void:
 
 
 func _on_rested(cp: Checkpoint) -> void:
-	var spawn := cp.spawn_point()
-	var dir := spawn - cp.global_position
-	GameState.set_checkpoint(spawn, atan2(-dir.x, -dir.z))
+	GameState.set_checkpoint(cp.spawn_point(), cp.respawn_yaw)
 	player.set_health_full()
 	player.stamina = player.max_stamina
 	player.stamina_changed.emit(player.stamina, player.max_stamina)

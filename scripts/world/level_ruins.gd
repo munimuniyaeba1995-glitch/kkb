@@ -233,7 +233,7 @@ func _build_forecourt() -> void:
 	brazier(Vector3(-5, 0, -17))
 	brazier(Vector3(5, 0, -17))
 
-	add_checkpoint("前庭の篝", Vector3(0, 0, 12), PI)
+	add_checkpoint("前庭の篝", Vector3(-1.6, 0, 10.4), PI * 0.5)
 	var chest := Chest.new("forecourt_chest", "flask")
 	chest.position = Vector3(15, 0, -15)
 	chest.rotation.y = PI * 0.25
@@ -287,7 +287,7 @@ func _build_boss_area() -> void:
 	box(Vector3(12, 1, 9), Vector3(0, -1, -79), mat_stone_dark)
 	wall(Vector2(-4, -75), Vector2(-4, -83))
 	wall(Vector2(4, -75), Vector2(4, -83))
-	add_checkpoint("王冠の間の前の篝", Vector3(2.4, 0, -77), PI)
+	add_checkpoint("王冠の間の前の篝", Vector3(-1.6, 0, -78), PI * 0.5)
 
 	# 円形の闘技場
 	var center := Vector3(0, 0, -103)
