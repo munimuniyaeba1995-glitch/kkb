@@ -76,9 +76,11 @@ func apply_graphics(tree: SceneTree) -> void:
 	var q := int(quality)
 	var vp := tree.root
 	vp.scaling_3d_scale = RENDER_SCALE[q]
-	vp.msaa_3d = Viewport.MSAA_2X if quality == Quality.HIGH else Viewport.MSAA_DISABLED
-	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == Quality.MEDIUM \
-		else Viewport.SCREEN_SPACE_AA_DISABLED
+	# ギザギザ対策は MSAA（Web版の描画方式でも確実に効く）。スマホの描画チップは MSAA が比較的軽い
+	vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][q]
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	# 質感の凹凸（ノーマルマップ）は「中」以上
+	Surface.set_detail(quality != Quality.LOW)
 	vp.positional_shadow_atlas_size = SHADOW_ATLAS[q]
 	RenderingServer.directional_shadow_atlas_set_size(SHADOW_ATLAS[q], true)
 	Engine.max_fps = MAX_FPS[q]
@@ -87,6 +89,7 @@ func apply_graphics(tree: SceneTree) -> void:
 		sun.directional_shadow_max_distance = SHADOW_DISTANCE[q]
 		# 「低」は月光の影を切る（影の描画は描画命令が倍近くになるため）
 		sun.shadow_enabled = quality != Quality.LOW
+		sun.shadow_blur = 1.5   # 影の縁をやわらかく
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if quality == Quality.LOW \
 			else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	# 点光源の影は重いので「高」だけ

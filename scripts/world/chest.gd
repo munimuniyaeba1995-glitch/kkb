@@ -19,6 +19,7 @@ func _ready() -> void:
 	radius = 1.8
 	var wood := StandardMaterial3D.new()
 	wood.albedo_color = Color(0.35, 0.22, 0.12)
+	Surface.apply(wood, "wood")
 	var trim := StandardMaterial3D.new()
 	trim.albedo_color = Color(0.7, 0.55, 0.25)
 	trim.metallic = 0.8

@@ -30,6 +30,7 @@ func _ready() -> void:
 	base.position.y = 0.25
 	var stone := StandardMaterial3D.new()
 	stone.albedo_color = Color(0.25, 0.24, 0.23)
+	Surface.apply(stone, "stone")
 	base.material_override = stone
 	add_child(base)
 	var ember := MeshInstance3D.new()

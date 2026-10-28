@@ -16,6 +16,18 @@ static func _particle_mesh(color: Color, size: float) -> QuadMesh:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.vertex_color_use_as_albedo = true
 	m.albedo_color = color
+	# 四角ではなく、ふちのぼけた丸い粒にする
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 0))
+	var dot := GradientTexture2D.new()
+	dot.gradient = g
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(0.5, 0.0)
+	dot.width = 32
+	dot.height = 32
+	m.albedo_texture = dot
 	q.material = m
 	return q
 
@@ -56,7 +68,12 @@ static func hit_spark(parent: Node, pos: Vector3, blocked: bool = false, big: bo
 ## 画面の周囲に常に舞っている灰。カメラに付けて使う
 static func ambient_ash(amount: int) -> CPUParticles3D:
 	if _ash_mesh == null:
-		_ash_mesh = _particle_mesh(Color(0.75, 0.72, 0.68, 0.7), 0.05)
+		_ash_mesh = _particle_mesh(Color(0.75, 0.72, 0.68, 0.7), 0.06)
+		# カメラのすぐ前を通る粒は消す（画面いっぱいの白い塊にならないように）
+		var am := _ash_mesh.material as StandardMaterial3D
+		am.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+		am.distance_fade_min_distance = 0.6
+		am.distance_fade_max_distance = 2.5
 	var p := CPUParticles3D.new()
 	p.add_to_group("ambient_particles")
 	p.mesh = _ash_mesh

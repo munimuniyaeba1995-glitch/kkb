@@ -46,12 +46,13 @@ func _mat(color: Color, rough: float = 0.9) -> StandardMaterial3D:
 
 
 func _make_materials() -> void:
-	mat_stone = _mat(Color(0.34, 0.32, 0.31))
-	mat_stone_dark = _mat(Color(0.2, 0.19, 0.2))
-	mat_ground = _mat(Color(0.23, 0.22, 0.2))
-	mat_dirt = _mat(Color(0.2, 0.17, 0.14))
-	mat_wood = _mat(Color(0.18, 0.13, 0.1))
-	mat_arena = _mat(Color(0.17, 0.16, 0.17), 0.7)
+	# 地形は世界座標で模様を貼る（箱をつなげても模様が途切れない）
+	mat_stone = Surface.apply(_mat(Color(0.34, 0.32, 0.31)), "stone", true)
+	mat_stone_dark = Surface.apply(_mat(Color(0.2, 0.19, 0.2)), "stone", true)
+	mat_ground = Surface.apply(_mat(Color(0.23, 0.22, 0.2)), "ground", true)
+	mat_dirt = Surface.apply(_mat(Color(0.2, 0.17, 0.14)), "ground", true)
+	mat_wood = Surface.apply(_mat(Color(0.18, 0.13, 0.1)), "wood", true)
+	mat_arena = Surface.apply(_mat(Color(0.17, 0.16, 0.17), 0.7), "stone", true)
 
 
 func _build_environment() -> void:

@@ -79,7 +79,7 @@ func _ready() -> void:
 	help.visible = false
 	help_panel.visible = false
 
-	var ver := UITheme.label("試作版 v0.3", 16, UITheme.TEXT_DIM)
+	var ver := UITheme.label("試作版 v0.4", 16, UITheme.TEXT_DIM)
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	ver.position = Vector2(24, -36)
 	add_child(ver)

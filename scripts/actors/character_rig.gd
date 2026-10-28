@@ -104,6 +104,12 @@ func build(cfg: Dictionary) -> void:
 	ember.emission_enabled = true
 	ember.emission = Color(1.0, 0.4, 0.1)
 	ember.emission_energy_multiplier = 3.0
+	# 質感（模様と凹凸）。被弾時の白い点滅は色を掛け合わせるので、模様を付けた後の色を覚えておく
+	Surface.apply(body_mat, "stone" if archetype == "colossus" else "metal")
+	Surface.apply(cloth, "cloth")
+	Surface.apply(skin, "skin")
+	Surface.apply(bone, "skin")
+	Surface.apply(weapon_mat, "metal")
 	for m in [body_mat, cloth, skin, bone]:
 		_flash_mats.append(m)
 		_flash_colors.append(m.albedo_color)
@@ -135,7 +141,7 @@ func build(cfg: Dictionary) -> void:
 	if archetype == "knight" or archetype == "ghoul":
 		_part(spine, _box(Vector3(chest_w, 0.17 * h, 0.2 * h * w)), body_mat, Vector3(0, 0.23 * h, 0))
 	else:
-		var chest := _part(spine, _sphere(0.5, 12), body_mat, Vector3(0, 0.23 * h, 0))
+		var chest := _part(spine, _sphere(0.5, 22), body_mat, Vector3(0, 0.23 * h, 0))
 		chest.scale = Vector3(chest_w, 0.22 * h, 0.24 * h * w)
 	var shoulder_y := 0.29 * h
 	var shoulder_x := chest_w * 0.5 + 0.03 * h
@@ -191,7 +197,7 @@ func _box(size: Vector3) -> BoxMesh:
 	return b
 
 
-func _sphere(r: float, seg: int = 12) -> SphereMesh:
+func _sphere(r: float, seg: int = 16) -> SphereMesh:
 	var s := SphereMesh.new()
 	s.radius = r
 	s.height = r * 2.0
@@ -219,8 +225,8 @@ func _limb(parent: Node3D, length: float, thick: float, mat: Material, axis_z: b
 		var c := CapsuleMesh.new()
 		c.radius = thick * 0.55
 		c.height = maxf(length + thick * 0.3, c.radius * 2.0)
-		c.radial_segments = 8
-		c.rings = 2
+		c.radial_segments = 12
+		c.rings = 3
 		mesh = c
 	var pos := Vector3(0, 0, -length * 0.5) if axis_z else Vector3(0, -length * 0.5, 0)
 	var rot := Vector3(90, 0, 0) if axis_z and archetype != "knight" else Vector3.ZERO
@@ -274,7 +280,7 @@ func _build_arm(shoulder: Node3D, h: float, limb: float, arm_mul: float, flesh: 
 	if weapon_side:
 		_build_weapon(hand, h, cfg)
 	elif cfg.get("shield", false):
-		var shield_mat := _mat(Color(0.3, 0.24, 0.17), 0.3, 0.6)
+		var shield_mat := Surface.apply(_mat(Color(0.3, 0.24, 0.17), 0.3, 0.6), "wood")
 		_flash_mats.append(shield_mat)
 		_flash_colors.append(shield_mat.albedo_color)
 		var s := _part(elbow, _box(Vector3(0.2 * h, 0.27 * h, 0.025 * h)), shield_mat,
