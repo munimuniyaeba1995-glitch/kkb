@@ -1,0 +1,129 @@
+:root {
+  --bg: #07060d;
+  --panel: rgba(14, 11, 26, .92);
+  --line: rgba(255, 255, 255, .14);
+  --text: #f3eefc;
+  --dim: #b3a9c9;
+  --pink: #ff3d9a;
+  --cyan: #2ee6e6;
+  --amber: #ffb347;
+  --green: #5dfc9b;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif; font-size: 15px;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+button { font: inherit; color: var(--text); background: rgba(255,255,255,.08); border: 1px solid var(--line);
+  border-radius: 999px; padding: .5em 1em; cursor: pointer; white-space: nowrap; }
+button:hover { background: rgba(255,255,255,.16); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button.neon { border-color: var(--pink); color: #fff; background: rgba(255, 61, 154, .22);
+  box-shadow: 0 0 10px rgba(255, 61, 154, .55), inset 0 0 8px rgba(255, 61, 154, .35); }
+button.small { font-size: .85em; padding: .35em .8em; }
+[hidden] { display: none !important; }
+a { color: var(--cyan); }
+
+/* ---- ビュー ---- */
+#aerial, #ground { position: fixed; inset: 0; }
+#aerial .cesium-viewer, #aerial .cesium-widget { width: 100%; height: 100%; }
+/* 夜景フィルターは「演出」。実写（昼間撮影を含む）に色調補正をかけているだけ。 */
+.night #aerial canvas, .night #aerial .gm-style > div:first-child,
+.night #ground .gm-style > div:first-child {
+  filter: brightness(.6) contrast(1.2) saturate(1.25) hue-rotate(-12deg);
+}
+.night #aerial::after, .night #ground::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 60%, rgba(255, 120, 60, .10), rgba(20, 10, 60, .38) 75%); z-index: 2; }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .6s; z-index: 5; }
+#fade.on { opacity: 1; }
+
+/* ---- 上部バー ---- */
+#topbar { position: fixed; z-index: 10; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: .6rem;
+  flex-wrap: wrap; padding: calc(.5rem + var(--safe-t)) .7rem .5rem;
+  background: linear-gradient(rgba(7, 6, 13, .92), rgba(7, 6, 13, 0)); }
+.logo { margin: 0; font-size: 1.05rem; letter-spacing: .12em; font-weight: 800; color: #fff;
+  text-shadow: 0 0 6px var(--pink), 0 0 18px var(--pink); }
+.logo span { color: var(--cyan); text-shadow: 0 0 6px var(--cyan), 0 0 18px var(--cyan); }
+.modes { display: flex; margin: 0 auto; border: 1px solid var(--line); border-radius: 999px; overflow: hidden;
+  background: rgba(0, 0, 0, .45); }
+.modes button { border: 0; border-radius: 0; background: none; padding: .5em 1.1em; color: var(--dim); }
+.modes button[aria-selected="true"] { color: #fff; background: rgba(46, 230, 230, .2);
+  box-shadow: inset 0 0 12px rgba(46, 230, 230, .5); text-shadow: 0 0 8px var(--cyan); }
+.tools { display: flex; gap: .35rem; }
+.tools button { padding: .4em .75em; font-size: .85rem; }
+#btnNight[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+
+#status { position: fixed; z-index: 11; top: calc(3.4rem + var(--safe-t)); left: 50%; transform: translateX(-50%);
+  max-width: min(92vw, 34rem); padding: .5em 1em; border-radius: 10px; background: var(--panel);
+  border: 1px solid var(--amber); color: var(--amber); font-size: .85rem; text-align: center; }
+
+/* ---- HUD ---- */
+#hud { position: fixed; z-index: 9; left: 0; right: 0; bottom: calc(4.4rem + var(--safe-b)); text-align: center;
+  pointer-events: none; padding: 0 .8rem; }
+#caption { display: inline-block; font-size: 1.05rem; font-weight: 700; text-shadow: 0 0 8px #000, 0 0 14px var(--pink); }
+#caption:empty, #where:empty { display: none; }
+#where { margin-top: .2rem; font-size: .78rem; color: var(--dim); text-shadow: 0 0 6px #000; }
+
+#minimap { position: fixed; z-index: 9; left: .6rem; bottom: calc(7.2rem + var(--safe-b)); width: 150px; height: 150px;
+  border-radius: 14px; overflow: hidden; border: 1px solid var(--cyan); box-shadow: 0 0 12px rgba(46, 230, 230, .45); }
+
+/* ---- 下部コントロール ---- */
+#controls { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; padding: .6rem .7rem calc(.7rem + var(--safe-b));
+  background: linear-gradient(rgba(7, 6, 13, 0), rgba(7, 6, 13, .92)); }
+#controls > div { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+.mode-free .tour-only, .mode-tour .free-only { display: none !important; }
+.view-aerial #btnSky, .view-ground #btnWalk { display: none; }
+
+/* ---- 店舗パネル ---- */
+#panel, #list { position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: min(420px, 100vw);
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 1rem 1rem calc(1.2rem + var(--safe-b));
+  backdrop-filter: blur(8px); box-shadow: -8px 0 30px rgba(0, 0, 0, .6); }
+@media (max-width: 700px) {
+  #panel { top: auto; left: 0; bottom: calc(4rem + var(--safe-b)); width: 100vw; max-height: 58vh; border-left: 0; border-top: 1px solid var(--pink);
+    border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .6); }
+}
+.close { position: sticky; top: 0; float: right; width: 2.2rem; height: 2.2rem; padding: 0; font-size: 1.2rem; z-index: 1;
+  background: rgba(0, 0, 0, .5); }
+#panel h2, #list h2 { margin: .1rem 2.6rem .3rem 0; font-size: 1.25rem; line-height: 1.35; color: #fff;
+  text-shadow: 0 0 8px var(--pink); }
+#panel h3 { margin: 1.1rem 0 .4rem; font-size: .8rem; letter-spacing: .1em; color: var(--cyan); font-weight: 700; }
+.badges { display: flex; flex-wrap: wrap; gap: .35rem; margin: .4rem 0; }
+.badge { font-size: .72rem; padding: .15em .6em; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+.badge.ok { border-color: var(--green); color: var(--green); }
+.badge.warn { border-color: var(--amber); color: var(--amber); }
+.badge.visit { border-color: var(--pink); color: var(--pink); }
+.fine { font-size: .76rem; color: var(--dim); line-height: 1.6; }
+.unknown { color: var(--amber); font-size: .85rem; }
+#exterior { width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #000;
+  border: 1px solid var(--line); }
+.photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: .4rem; }
+.photos figure { margin: 0; }
+.photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; display: block; background: #111; }
+.photos figcaption { font-size: .65rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hours { list-style: none; margin: 0; padding: 0; font-size: .88rem; line-height: 1.7; }
+.hours li.today { color: var(--amber); font-weight: 700; }
+.features { margin: 0; padding-left: 1.1rem; line-height: 1.7; font-size: .9rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.actions a.btn { display: inline-block; text-decoration: none; color: #fff; border: 1px solid var(--cyan);
+  border-radius: 999px; padding: .5em 1em; background: rgba(46, 230, 230, .16); box-shadow: 0 0 10px rgba(46, 230, 230, .4); }
+
+#list ol { list-style: none; margin: .6rem 0; padding: 0; counter-reset: s; }
+#list li { counter-increment: s; border: 1px solid var(--line); border-radius: 12px; padding: .6rem .7rem; margin-bottom: .5rem;
+  cursor: pointer; }
+#list li:hover { border-color: var(--pink); }
+#list li b::before { content: counter(s) ". "; color: var(--pink); }
+#list li.visited { border-color: rgba(93, 252, 155, .5); }
+#list li small { display: block; color: var(--dim); margin-top: .15rem; }
+
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--pink); border-radius: 16px;
+  max-width: min(92vw, 30rem); padding: 1.2rem; box-shadow: 0 0 30px rgba(255, 61, 154, .4); }
+dialog::backdrop { background: rgba(0, 0, 0, .7); }
+dialog h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+dialog p, dialog li { font-size: .85rem; line-height: 1.6; color: var(--dim); }
+dialog input { width: 100%; padding: .6em .8em; border-radius: 10px; border: 1px solid var(--line); background: #000;
+  color: #fff; font: inherit; font-family: ui-monospace, monospace; }
+dialog .row { display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .9rem; }
+dialog summary { cursor: pointer; margin-top: .7rem; font-size: .85rem; }
+
+@media (prefers-reduced-motion: reduce) { #fade { transition: none; } }
