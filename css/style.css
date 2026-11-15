@@ -26,17 +26,27 @@ button.small { font-size: .85em; padding: .35em .8em; }
 a { color: var(--cyan); }
 
 /* ---- ビュー ---- */
-#aerial, #ground { position: fixed; inset: 0; }
-#aerial .cesium-viewer, #aerial .cesium-widget { width: 100%; height: 100%; }
-/* 夜景フィルターは「演出」。実写（昼間撮影を含む）に色調補正をかけているだけ。 */
-.night #aerial canvas, .night #aerial .gm-style > div:first-child,
-.night #ground .gm-style > div:first-child {
-  filter: brightness(.6) contrast(1.2) saturate(1.25) hue-rotate(-12deg);
-}
-.night #aerial::after, .night #ground::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 60%, rgba(255, 120, 60, .10), rgba(20, 10, 60, .38) 75%); z-index: 2; }
-#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .6s; z-index: 5; }
-#fade.on { opacity: 1; }
+#map, #demo { position: fixed; inset: 0; }
+/* 夜景フィルターは「演出」。地図の色調を変えているだけで、地図データは変えていない。 */
+.night #map .maplibregl-canvas { filter: brightness(.8) contrast(1.15) saturate(1.3) hue-rotate(-10deg); }
+.night.style-light #map .maplibregl-canvas { filter: invert(1) hue-rotate(180deg) brightness(.75) contrast(1.1) saturate(1.2); }
+.night #map::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: radial-gradient(ellipse at 50% 60%, rgba(255, 120, 60, .08), rgba(20, 10, 60, .32) 75%); }
+#map .maplibregl-ctrl-attrib { background: rgba(7, 6, 13, .75); color: var(--dim); font-size: 10px; }
+#map .maplibregl-ctrl-attrib a { color: var(--dim); }
+#map .maplibregl-ctrl-bottom-right { bottom: calc(5.6rem + var(--safe-b)); z-index: 3; }
+
+.store-marker { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid #fff; background: var(--pink);
+  color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 0 10px var(--pink), 0 0 22px rgba(255, 61, 154, .6); }
+.store-marker::after { content: ""; position: absolute; inset: -8px; } /* タッチしやすい当たり判定 */
+.store-marker.visited { background: #1c9c58; box-shadow: 0 0 10px var(--green); }
+.here-marker { width: 18px; height: 18px; border-radius: 50%; background: var(--amber); border: 3px solid #fff;
+  box-shadow: 0 0 0 8px rgba(255, 179, 71, .25), 0 0 16px var(--amber); }
+
+#demo { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1rem;
+  background: radial-gradient(ellipse at 50% 40%, #2a1040, #07060d 70%); color: var(--dim); font-size: .85rem; line-height: 1.7; }
+.demo-sign { font-size: clamp(2rem, 9vw, 4.5rem); font-weight: 900; letter-spacing: .1em; line-height: 1.1; color: #fff;
+  text-shadow: 0 0 10px var(--pink), 0 0 30px var(--pink), 0 0 60px var(--pink); margin-bottom: 1rem; }
 
 /* ---- 上部バー ---- */
 #topbar { position: fixed; z-index: 10; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: .6rem;
@@ -52,14 +62,14 @@ a { color: var(--cyan); }
   box-shadow: inset 0 0 12px rgba(46, 230, 230, .5); text-shadow: 0 0 8px var(--cyan); }
 .tools { display: flex; gap: .35rem; }
 .tools button { padding: .4em .75em; font-size: .85rem; }
-#btnNight[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+#btnNight[aria-pressed="true"], #btn3D[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
 
 #status { position: fixed; z-index: 11; top: calc(3.4rem + var(--safe-t)); left: 50%; transform: translateX(-50%);
   max-width: min(92vw, 34rem); padding: .5em 1em; border-radius: 10px; background: var(--panel);
   border: 1px solid var(--amber); color: var(--amber); font-size: .85rem; text-align: center; }
 
 /* ---- HUD ---- */
-#hud { position: fixed; z-index: 9; left: 0; right: 0; bottom: calc(4.4rem + var(--safe-b)); text-align: center;
+#hud { position: fixed; z-index: 9; left: 0; right: 0; bottom: calc(5.4rem + var(--safe-b)); text-align: center;
   pointer-events: none; padding: 0 .8rem; }
 #caption { display: inline-block; font-size: 1.05rem; font-weight: 700; text-shadow: 0 0 8px #000, 0 0 14px var(--pink); }
 #caption:empty, #where:empty { display: none; }
@@ -73,21 +83,23 @@ a { color: var(--cyan); }
   background: linear-gradient(rgba(7, 6, 13, 0), rgba(7, 6, 13, .92)); }
 #controls > div { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
 .mode-free .tour-only, .mode-tour .free-only { display: none !important; }
-.view-aerial #btnSky, .view-ground #btnWalk { display: none; }
+.view-aerial .walk-only, .view-walk #btnWalk { display: none; }
+#credit { text-align: center; font-size: 10px; color: var(--dim); margin-top: .35rem; }
+#credit a { color: var(--dim); }
 
 /* ---- 店舗パネル ---- */
 #panel, #list { position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: min(420px, 100vw);
   background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 1rem 1rem calc(1.2rem + var(--safe-b));
   backdrop-filter: blur(8px); box-shadow: -8px 0 30px rgba(0, 0, 0, .6); }
 @media (max-width: 700px) {
-  #panel { top: auto; left: 0; bottom: calc(4rem + var(--safe-b)); width: 100vw; max-height: 58vh; border-left: 0; border-top: 1px solid var(--pink);
+  #panel { top: auto; left: 0; bottom: calc(6.4rem + var(--safe-b)); width: 100vw; max-height: 52vh; border-left: 0; border-top: 1px solid var(--pink);
     border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .6); }
 }
 .close { position: sticky; top: 0; float: right; width: 2.2rem; height: 2.2rem; padding: 0; font-size: 1.2rem; z-index: 1;
   background: rgba(0, 0, 0, .5); }
 #panel h2, #list h2 { margin: .1rem 2.6rem .3rem 0; font-size: 1.25rem; line-height: 1.35; color: #fff;
   text-shadow: 0 0 8px var(--pink); }
-#panel h3 { margin: 1.1rem 0 .4rem; font-size: .8rem; letter-spacing: .1em; color: var(--cyan); font-weight: 700; }
+#panel h3, #list h3 { margin: 1.1rem 0 .4rem; font-size: .8rem; letter-spacing: .1em; color: var(--cyan); font-weight: 700; }
 .badges { display: flex; flex-wrap: wrap; gap: .35rem; margin: .4rem 0; }
 .badge { font-size: .72rem; padding: .15em .6em; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
 .badge.ok { border-color: var(--green); color: var(--green); }
@@ -127,3 +139,10 @@ dialog .row { display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: w
 dialog summary { cursor: pointer; margin-top: .7rem; font-size: .85rem; }
 
 @media (prefers-reduced-motion: reduce) { #fade { transition: none; } }
+
+.info { display: grid; grid-template-columns: 6.5em 1fr; gap: .35rem .6rem; margin: 0; font-size: .9rem; line-height: 1.6; }
+.info dt { color: var(--dim); }
+.info dd { margin: 0; word-break: break-word; }
+.info .none { color: var(--amber); font-size: .82rem; }
+#extraBody { padding-left: 1.1rem; font-size: .85rem; line-height: 1.7; }
+#btnReload { margin-left: .4rem; }

@@ -4,26 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>KOZA NIGHT WALK — コザ・サンシティ通り バーチャル飲み歩き</title>
-<meta name="description" content="沖縄市コザのサンシティ通りを、Google の 3D 地図とストリートビューで飲み歩くバーチャル体験。">
-<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.135/Build/Cesium/Widgets/widgets.css">
+<meta name="description" content="沖縄市コザのサンシティ通りを、OpenStreetMap の地図でバーチャル飲み歩き。API キー不要。">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="night mode-free view-aerial">
 
-<div id="aerial" aria-label="上空ビュー"></div>
-<div id="ground" aria-label="地上ビュー（ストリートビュー）" hidden></div>
-<div id="fade"></div>
+<div id="map" aria-label="地図"></div>
+<div id="demo" hidden>
+  <div class="demo-sign">KOZA<br>NIGHT WALK</div>
+  <p>デモ表示：地図データを取得できませんでした。<br>この画面は位置関係を表していません。</p>
+</div>
 
 <header id="topbar">
   <h1 class="logo"><span>KOZA</span> NIGHT WALK</h1>
   <div class="modes" role="tablist" aria-label="モード切り替え">
     <button id="modeFree" role="tab" aria-selected="true">フリー</button>
-    <button id="modeTour" role="tab" aria-selected="false">自動飲み歩き</button>
+    <button id="modeTour" role="tab" aria-selected="false">自動ツアー</button>
   </div>
   <div class="tools">
     <button id="btnList" title="店舗リスト">店舗</button>
+    <button id="btn3D" title="3D 建物の表示切り替え" aria-pressed="true">3D</button>
     <button id="btnNight" title="夜景フィルター（演出）の切り替え" aria-pressed="true">夜景</button>
-    <button id="btnKey" title="API キー設定">設定</button>
   </div>
 </header>
 
@@ -34,13 +36,12 @@
   <div id="where"></div>
 </div>
 
-<div id="minimap" hidden></div>
-
 <footer id="controls">
   <div class="free-only">
     <button id="btnWalk" class="neon">通りを歩く</button>
-    <button id="btnSky">上空へ</button>
-    <button id="btnNearby" title="Google マップから通り沿いの飲食店を取得">周辺の店を追加</button>
+    <button id="btnBack" class="walk-only" aria-label="通りを戻る">◀ 戻る</button>
+    <button id="btnFwd" class="walk-only neon" aria-label="通りを進む">進む ▶</button>
+    <button id="btnSky" class="walk-only">上空へ</button>
   </div>
   <div class="tour-only">
     <button id="btnStart" class="neon">スタート</button>
@@ -49,6 +50,7 @@
     <button id="btnNext" class="neon" hidden>次へ</button>
     <button id="btnEnd" hidden>終了</button>
   </div>
+  <div id="credit"></div>
 </footer>
 
 <aside id="panel" hidden aria-live="polite">
@@ -59,40 +61,25 @@
 <aside id="list" hidden>
   <button class="close" id="listClose" aria-label="閉じる">×</button>
   <h2>店舗リスト</h2>
-  <p class="fine">実在が公開情報で確認できた店舗のみ掲載しています。</p>
+  <p class="fine" id="listNote"></p>
   <ol id="listBody"></ol>
+  <div id="extraBox" hidden>
+    <h3>地図に未登録の店舗（公開情報で確認）</h3>
+    <ul id="extraBody"></ul>
+  </div>
   <button id="btnReset" class="small">訪問記録をリセット</button>
-  <p class="fine" id="legend">
-    <b>実データ</b>：地形・建物・道路・店舗位置・写真・営業時間（Google）<br>
-    <b>演出</b>：夜景フィルター、カメラワーク、ネオン風 UI
+  <button id="btnReload" class="small">店舗データを取り直す</button>
+  <p class="fine">
+    <b>実データ</b>：道路・建物・店舗（OpenStreetMap）<br>
+    <b>演出</b>：カメラワーク、夜景フィルター、ネオン風 UI
   </p>
 </aside>
 
-<dialog id="keyDialog">
-  <form method="dialog" id="keyForm">
-    <h2>Google Maps Platform の API キー</h2>
-    <p>3D 地図・ストリートビュー・店舗情報の表示に必要です。キーはこのブラウザ内（localStorage）にのみ保存されます。</p>
-    <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="AIza...">
-    <details>
-      <summary>必要な API</summary>
-      <ul>
-        <li>Map Tiles API（Photorealistic 3D Tiles）</li>
-        <li>Maps JavaScript API（ストリートビュー・地図）</li>
-        <li>Places API (New)（店舗の位置・写真・営業時間）</li>
-        <li>Directions API（任意：道順の線）</li>
-      </ul>
-      <p>キーには HTTP リファラー制限を設定してください。</p>
-    </details>
-    <div class="row">
-      <button type="button" id="keyClear" class="small">削除</button>
-      <button type="button" id="keyCancel" class="small">キーなしで見る</button>
-      <button type="submit" class="neon">保存して開始</button>
-    </div>
-  </form>
-</dialog>
-
+<script src="vendor/maplibre-gl.js"></script>
 <script src="js/data.js"></script>
-<script src="https://cesium.com/downloads/cesiumjs/releases/1.135/Build/Cesium/Cesium.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/osm.js"></script>
+<script src="js/map-maplibre.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
