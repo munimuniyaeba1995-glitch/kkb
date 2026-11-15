@@ -5,7 +5,14 @@
 
 ## 使い方
 
-`index.html` を Web サーバー（GitHub Pages など）に置いて開くだけです。ローカルなら:
+### スマホで開く
+
+- **GitHub Pages（おすすめ）**: リポジトリの Settings → Pages → Source を「Deploy from a branch」、Branch を `claude/cool-pasteur-307ph6`・`/ (root)` にして Save。1〜2 分後に https://munimuniyaeba1995-glitch.github.io/kkb/ で開けます。
+- **すぐ試す（設定不要）**: 外部サービス githack 経由で、GitHub 上のファイルをそのまま表示できます。URL はコミットごとに変わります。
+
+### ローカルで開く
+
+`index.html` を Web サーバーに置いて開きます（ファイルを直接ダブルクリックしても動きません）。ローカルなら:
 
 ```
 python3 -m http.server
